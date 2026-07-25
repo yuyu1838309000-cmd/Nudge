@@ -18,12 +18,17 @@ import android.widget.TextView
 import androidx.activity.ComponentActivity
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
+import java.io.BufferedReader
+import java.io.InputStreamReader
+import java.io.OutputStreamWriter
+import java.net.Socket
 
 class MainActivity : ComponentActivity() {
 
     private lateinit var statusDot: View
     private lateinit var statusText: TextView
     private lateinit var toggleButton: Button
+    private lateinit var testResult: TextView
     private val handler = Handler(Looper.getMainLooper())
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -54,7 +59,7 @@ class MainActivity : ComponentActivity() {
         val statusRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
-            setPadding(0, 48, 0, 36)
+            setPadding(0, 48, 0, 16)
         }
 
         statusDot = View(this).apply {
@@ -78,15 +83,25 @@ class MainActivity : ComponentActivity() {
         }
         layout.addView(toggleButton)
 
+        testResult = TextView(this).apply {
+            textSize = 13f
+            setTextColor(Color.parseColor("#888888"))
+            gravity = Gravity.CENTER
+            setPadding(0, 24, 0, 0)
+        }
+        layout.addView(testResult)
+
         setContentView(layout)
 
         toggleButton.setOnClickListener { toggleService() }
         updateUI()
+        runSelfTest()
     }
 
     override fun onResume() {
         super.onResume()
         updateUI()
+        runSelfTest()
     }
 
     private fun isServiceRunning(): Boolean {
@@ -112,10 +127,37 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun runSelfTest() {
+        testResult.text = "检测中..."
+        Thread {
+            try {
+                val s = Socket("127.0.0.1", 8809)
+                val out = OutputStreamWriter(s.getOutputStream())
+                out.write("GET /ping HTTP/1.0\r\nHost: 127.0.0.1\r\n\r\n")
+                out.flush()
+                val inp = BufferedReader(InputStreamReader(s.getInputStream()))
+                var line: String? = ""
+                val sb = StringBuilder()
+                while (inp.readLine().also { line = it } != null) {
+                    sb.append(line).append("\n")
+                }
+                s.close()
+                val body = sb.toString()
+                if (body.contains("pong")) {
+                    handler.post { testResult.text = "✓ MCP 自检通过" }
+                } else {
+                    handler.post { testResult.text = "✗ 响应异常: $body" }
+                }
+            } catch (e: Exception) {
+                handler.post { testResult.text = "✗ 连接失败: ${e.message}" }
+            }
+        }.start()
+    }
+
     private fun toggleService() {
         if (isServiceRunning()) {
             stopService(Intent(this, McpService::class.java))
-            handler.postDelayed({ updateUI() }, 300)
+            handler.postDelayed({ updateUI(); runSelfTest() }, 500)
         } else {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
@@ -126,7 +168,7 @@ class MainActivity : ComponentActivity() {
                 }
             }
             startForegroundService(Intent(this, McpService::class.java))
-            handler.postDelayed({ updateUI() }, 300)
+            handler.postDelayed({ updateUI(); runSelfTest() }, 500)
         }
     }
 
@@ -136,6 +178,6 @@ class MainActivity : ComponentActivity() {
         if (granted) {
             startForegroundService(Intent(this, McpService::class.java))
         }
-        handler.postDelayed({ updateUI() }, 300)
+        handler.postDelayed({ updateUI(); runSelfTest() }, 500)
     }
 }
