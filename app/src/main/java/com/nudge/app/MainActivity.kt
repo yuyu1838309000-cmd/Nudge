@@ -2,6 +2,7 @@ package com.nudge.app
 
 import android.Manifest
 import android.app.ActivityManager
+import android.app.AppOpsManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -10,6 +11,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.provider.Settings
 import android.view.Gravity
 import android.view.View
 import android.widget.Button
@@ -29,6 +31,8 @@ class MainActivity : ComponentActivity() {
     private lateinit var statusText: TextView
     private lateinit var toggleButton: Button
     private lateinit var testResult: TextView
+    private lateinit var permUsageText: TextView
+    private lateinit var permUsageBtn: Button
     private val handler = Handler(Looper.getMainLooper())
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -59,7 +63,7 @@ class MainActivity : ComponentActivity() {
         val statusRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
-            setPadding(0, 48, 0, 16)
+            setPadding(0, 36, 0, 12)
         }
 
         statusDot = View(this).apply {
@@ -91,17 +95,42 @@ class MainActivity : ComponentActivity() {
         }
         layout.addView(testResult)
 
+        // 权限状态区域
+        val permLabel = TextView(this).apply {
+            text = "权限状态"
+            textSize = 14f
+            setTextColor(Color.parseColor("#aaaaaa"))
+            gravity = Gravity.CENTER
+            setPadding(0, 32, 0, 12)
+        }
+        layout.addView(permLabel)
+
+        permUsageText = TextView(this).apply {
+            textSize = 13f
+            gravity = Gravity.CENTER
+        }
+        layout.addView(permUsageText)
+
+        permUsageBtn = Button(this).apply {
+            textSize = 14f
+            setPadding(32, 10, 32, 10)
+        }
+        layout.addView(permUsageBtn)
+
         setContentView(layout)
 
         toggleButton.setOnClickListener { toggleService() }
+        permUsageBtn.setOnClickListener { openUsageAccessSettings() }
         updateUI()
         runSelfTest()
+        updatePermissionUI()
     }
 
     override fun onResume() {
         super.onResume()
         updateUI()
         runSelfTest()
+        updatePermissionUI()
     }
 
     private fun isServiceRunning(): Boolean {
@@ -112,6 +141,33 @@ class MainActivity : ComponentActivity() {
             }
         }
         return false
+    }
+
+    private fun hasUsageAccess(): Boolean {
+        val appOps = getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager
+        val mode = appOps.checkOpNoThrow(
+            AppOpsManager.OPSTR_GET_USAGE_STATS,
+            android.os.Process.myUid(),
+            packageName
+        )
+        return mode == AppOpsManager.MODE_ALLOWED
+    }
+
+    private fun updatePermissionUI() {
+        if (hasUsageAccess()) {
+            permUsageText.text = "✓ 使用情况访问"
+            permUsageText.setTextColor(Color.parseColor("#4CAF50"))
+            permUsageBtn.visibility = View.GONE
+        } else {
+            permUsageText.text = "✗ 使用情况访问"
+            permUsageText.setTextColor(Color.parseColor("#ff6b6b"))
+            permUsageBtn.text = "去授权"
+            permUsageBtn.visibility = View.VISIBLE
+        }
+    }
+
+    private fun openUsageAccessSettings() {
+        startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
     }
 
     private fun updateUI() {
