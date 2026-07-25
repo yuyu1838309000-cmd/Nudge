@@ -12,10 +12,12 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
+import android.view.Gravity
 import android.view.View
 import android.widget.Button
 import android.widget.EditText
 import android.widget.ImageView
+import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.activity.ComponentActivity
 import androidx.activity.result.contract.ActivityResultContracts
@@ -44,7 +46,33 @@ class MainActivity : ComponentActivity() {
     private lateinit var apiSaveBtn: Button
     private lateinit var apiStatus: TextView
     private lateinit var versionText: TextView
+    private lateinit var toolCountText: TextView
+    private lateinit var toolsContainer: LinearLayout
     private val handler = Handler(Looper.getMainLooper())
+
+    private data class ToolDef(val name: String, val desc: String, val status: String)
+
+    private val tools = listOf(
+        ToolDef("ping", "测试连通性", "ok"),
+        ToolDef("get_foreground_app", "获取前台应用包名和名称", "ok"),
+        ToolDef("screenshot_analyze", "截屏并用AI分析内容", "ok"),
+        ToolDef("sensor_data", "加速度/光线/陀螺仪等传感器", "ok"),
+        ToolDef("device_status", "锁屏/电量/充电/网络状态", "ok"),
+        ToolDef("get_location", "GPS定位经纬度", "ok"),
+        ToolDef("get_notifications", "最近通知列表", "ok"),
+        ToolDef("get_steps", "今日步数", "ok"),
+        ToolDef("calendar_query", "查询日历事件", "ok"),
+        ToolDef("set_alarm", "设置系统闹钟", "ok"),
+        ToolDef("lock_screen", "强制锁屏", "ok"),
+        ToolDef("media_play_pause", "媒体播放/暂停", "ok"),
+        ToolDef("media_next", "媒体下一首", "ok"),
+        ToolDef("media_previous", "媒体上一首", "ok"),
+        ToolDef("press_back", "返回键", "ok"),
+        ToolDef("press_home", "回桌面", "ok"),
+        ToolDef("open_app", "打开指定应用", "ok"),
+        ToolDef("tap", "点击屏幕指定坐标", "wip"),
+        ToolDef("swipe", "滑动屏幕", "wip"),
+    )
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -67,6 +95,8 @@ class MainActivity : ComponentActivity() {
         apiSaveBtn = findViewById(R.id.apiSaveBtn)
         apiStatus = findViewById(R.id.apiStatus)
         versionText = findViewById(R.id.versionText)
+        toolCountText = findViewById(R.id.toolCountText)
+        toolsContainer = findViewById(R.id.toolsContainer)
 
         try {
             val info = packageManager.getPackageInfo(packageName, 0)
@@ -98,6 +128,7 @@ class MainActivity : ComponentActivity() {
         updateUI()
         runSelfTest()
         updatePermissionUI()
+        buildToolList()
     }
 
     override fun onResume() {
@@ -105,6 +136,68 @@ class MainActivity : ComponentActivity() {
         updateUI()
         runSelfTest()
         updatePermissionUI()
+    }
+
+    private fun buildToolList() {
+        val okCount = tools.count { it.status == "ok" }
+        val wipCount = tools.count { it.status == "wip" }
+        toolCountText.text = "${tools.size} 个工具 | $okCount 可用 · $wipCount 调试中"
+
+        // Group by status for section headers
+        val sections = listOf(
+            "已就绪" to tools.filter { it.status == "ok" },
+            "调试中" to tools.filter { it.status == "wip" },
+        )
+
+        for ((label, items) in sections) {
+            if (items.isEmpty()) continue
+
+            val sectionLabel = TextView(this).apply {
+                text = label
+                textSize = 11f
+                setTextColor(Color.parseColor("#6B7280"))
+                setPadding(0, 8, 0, 6)
+            }
+            toolsContainer.addView(sectionLabel)
+
+            for (tool in items) {
+                val row = LinearLayout(this).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    gravity = Gravity.CENTER_VERTICAL
+                    setPadding(0, 6, 0, 6)
+                }
+
+                val dotId = when (tool.status) {
+                    "ok" -> R.drawable.dot_green
+                    "wip" -> R.drawable.dot_orange
+                    else -> R.drawable.dot_gray
+                }
+                val dot = ImageView(this).apply {
+                    layoutParams = LinearLayout.LayoutParams(10, 10).apply { setMargins(0, 0, 10, 0) }
+                    setImageResource(dotId)
+                }
+                row.addView(dot)
+
+                val nameTv = TextView(this).apply {
+                    text = tool.name
+                    textSize = 13f
+                    setTextColor(Color.parseColor("#9CA3AF"))
+                    layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                    fontFamily = null // monospace would be nice but let's keep it simple
+                }
+                row.addView(nameTv)
+
+                val descTv = TextView(this).apply {
+                    text = tool.desc
+                    textSize = 12f
+                    setTextColor(Color.parseColor("#6B7280"))
+                    maxLines = 1
+                }
+                row.addView(descTv)
+
+                toolsContainer.addView(row)
+            }
+        }
     }
 
     private fun isServiceRunning(): Boolean {
