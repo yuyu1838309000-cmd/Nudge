@@ -479,7 +479,7 @@ class HttpServer(private val port: Int, private val context: Context) {
                     "open_app" -> {
                         val pkg = args.optString("package", "")
                         var info = openApp(pkg)
-                        if (info.contains(""error"")) {
+                        if (info.contains("error")) {
                             val appName = try {
                                 val ai = context.packageManager.getApplicationInfo(pkg, 0)
                                 context.packageManager.getApplicationLabel(ai).toString()
