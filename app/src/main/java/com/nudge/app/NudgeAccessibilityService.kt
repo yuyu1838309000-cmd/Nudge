@@ -259,7 +259,16 @@ class NudgeAccessibilityService : AccessibilityService() {
 
 
     fun switchToRikkaHub(): Boolean {
-        // Open recents
+        // 1. Try direct intent with REORDER_TO_FRONT
+        try {
+            val intent = packageManager.getLaunchIntentForPackage("me.rerere.rikkahub")
+            if (intent != null) {
+                intent.addFlags(android.content.Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                startActivity(intent)
+                return true
+            }
+        } catch (_: Exception) {}
+        // 2. Fallback to recents
         performGlobalAction(GLOBAL_ACTION_RECENTS)
         Thread.sleep(800)
         val root = rootInActiveWindow ?: return false
