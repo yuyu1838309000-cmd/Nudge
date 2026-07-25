@@ -367,6 +367,14 @@ class HttpServer(private val port: Int, private val context: Context) {
                     })
                 })
                 tools.put(JSONObject().apply {
+                    put("name", "switch_to_rikkahub")
+                    put("description", "切换到RikkaHub前台（从任何APP回到对话）")
+                    put("inputSchema", JSONObject().apply {
+                        put("type", "object")
+                        put("properties", JSONObject())
+                    })
+                })
+                tools.put(JSONObject().apply {
                     put("name", "get_sleep")
                     put("description", "从Health Connect获取睡眠数据（需小米运动/Zepp Life同步）")
                     put("inputSchema", JSONObject().apply {
@@ -510,6 +518,13 @@ class HttpServer(private val port: Int, private val context: Context) {
                     }
                     "get_heart_rate" -> {
                         val info = getHeartRate()
+                        content.put(JSONObject().apply { put("type", "text"); put("text", info) })
+                    }
+                    "switch_to_rikkahub" -> {
+                        val svc = NudgeAccessibilityService.instance
+                        val info = if (svc != null && svc.switchToRikkaHub())
+                            "{\"success\":true,\"action\":\"切换到RikkaHub\"}"
+                        else "{\"error\":\"切换失败，请手动切回RikkaHub\"}"
                         content.put(JSONObject().apply { put("type", "text"); put("text", info) })
                     }
                     "get_sleep" -> {

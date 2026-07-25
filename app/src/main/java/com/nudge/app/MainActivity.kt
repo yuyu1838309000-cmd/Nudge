@@ -76,6 +76,7 @@ class MainActivity : ComponentActivity() {
         ToolDef("swipe", "滑动屏幕", "ok"),
         ToolDef("read_screen", "读取当前界面所有文字", "ok"),
         ToolDef("get_heart_rate", "Health Connect心率", "wip"),
+        ToolDef("switch_to_rikkahub", "切回RikkaHub对话", "ok"),
         ToolDef("get_sleep", "Health Connect睡眠", "wip"),
     )
 
