@@ -250,14 +250,6 @@ class HttpServer(private val port: Int, private val context: Context) {
                     })
                 })
                 tools.put(JSONObject().apply {
-                    put("name", "get_clipboard")
-                    put("description", "读取当前剪贴板内容")
-                    put("inputSchema", JSONObject().apply {
-                        put("type", "object")
-                        put("properties", JSONObject())
-                    })
-                })
-                tools.put(JSONObject().apply {
                     put("name", "calendar_query")
                     put("description", "查询日历事件（需授权日历权限）")
                     put("inputSchema", JSONObject().apply {
@@ -327,13 +319,6 @@ class HttpServer(private val port: Int, private val context: Context) {
                     }
                     "get_steps" -> {
                         val info = getSteps()
-                        content.put(JSONObject().apply {
-                            put("type", "text")
-                            put("text", info)
-                        })
-                    }
-                    "get_clipboard" -> {
-                        val info = getClipboard()
                         content.put(JSONObject().apply {
                             put("type", "text")
                             put("text", info)
@@ -474,24 +459,6 @@ class HttpServer(private val port: Int, private val context: Context) {
     private fun getSteps(): String {
         val s = NudgeAccessibilityService.steps
         return if (s > 0) "{\"steps\":$s}" else "{\"steps\":0,\"note\":\"传感器未激活，请走几步后再试\"}"
-    }
-
-    private fun getClipboard(): String {
-        return try {
-            // 优先读MainActivity缓存的静态变量
-            val staticCache = MainActivity.clipboardCache
-            if (staticCache.isNotEmpty()) {
-                return "{\"text\":\"${staticCache.replace("\"","\\\"").replace("\n"," ")}\"}"
-            }
-            // 其次读SharedPreferences
-            val prefs = context.getSharedPreferences("nudge", android.content.Context.MODE_PRIVATE).getString("clipboard_cache", "") ?: ""
-            if (prefs.isNotEmpty()) {
-                return "{\"text\":\"${prefs.replace("\"","\\\"").replace("\n"," ")}\"}"
-            }
-            "{\"text\":\"\",\"note\":\"请打开Nudge后再试\"}"
-        } catch (e: Exception) {
-            "{\"error\":\"${e.message}\"}"
-        }
     }
 
     private fun getCalendar(days: Int): String {
