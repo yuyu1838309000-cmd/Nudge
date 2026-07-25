@@ -316,6 +316,32 @@ class HttpServer(private val port: Int, private val context: Context) {
                         put("required", JSONArray().put("package"))
                     })
                 })
+                tools.put(JSONObject().apply {
+                    put("name", "tap")
+                    put("description", "点击屏幕指定坐标")
+                    put("inputSchema", JSONObject().apply {
+                        put("type", "object")
+                        put("properties", JSONObject().apply {
+                            put("x", JSONObject().apply { put("type", "number"); put("description", "X坐标") })
+                            put("y", JSONObject().apply { put("type", "number"); put("description", "Y坐标") })
+                        })
+                        put("required", JSONArray().put("x").put("y"))
+                    })
+                })
+                tools.put(JSONObject().apply {
+                    put("name", "swipe")
+                    put("description", "滑动屏幕")
+                    put("inputSchema", JSONObject().apply {
+                        put("type", "object")
+                        put("properties", JSONObject().apply {
+                            put("x1", JSONObject().apply { put("type", "number") })
+                            put("y1", JSONObject().apply { put("type", "number") })
+                            put("x2", JSONObject().apply { put("type", "number") })
+                            put("y2", JSONObject().apply { put("type", "number") })
+                        })
+                        put("required", JSONArray().put("x1").put("y1").put("x2").put("y2"))
+                    })
+                })
                 JSONObject().apply { put("tools", tools) }
             }
             "tools/call" -> {
@@ -421,6 +447,20 @@ class HttpServer(private val port: Int, private val context: Context) {
                     "open_app" -> {
                         val pkg = args.optString("package", "")
                         val info = openApp(pkg)
+                        content.put(JSONObject().apply { put("type", "text"); put("text", info) })
+                    }
+                    "tap" -> {
+                        val x = args.optDouble("x", 0.0).toFloat()
+                        val y = args.optDouble("y", 0.0).toFloat()
+                        val info = doTap(x, y)
+                        content.put(JSONObject().apply { put("type", "text"); put("text", info) })
+                    }
+                    "swipe" -> {
+                        val x1 = args.optDouble("x1", 0.0).toFloat()
+                        val y1 = args.optDouble("y1", 0.0).toFloat()
+                        val x2 = args.optDouble("x2", 0.0).toFloat()
+                        val y2 = args.optDouble("y2", 0.0).toFloat()
+                        val info = doSwipe(x1, y1, x2, y2)
                         content.put(JSONObject().apply { put("type", "text"); put("text", info) })
                     }
                     else -> {
@@ -618,6 +658,24 @@ class HttpServer(private val port: Int, private val context: Context) {
         } catch (e: Exception) {
             "{\"error\":\"${e.message}\"}"
         }
+    }
+
+    private fun doTap(x: Float, y: Float): String {
+        val service = NudgeAccessibilityService.instance ?: return "{\"error\":\"无障碍服务未运行\"}"
+        val latch = java.util.concurrent.CountDownLatch(1)
+        var result = false
+        service.doTap(x, y) { ok -> result = ok; latch.countDown() }
+        latch.await(2, java.util.concurrent.TimeUnit.SECONDS)
+        return if (result) "{\"success\":true,\"x\":$x,\"y\":$y}" else "{\"error\":\"点击失败\"}"
+    }
+
+    private fun doSwipe(x1: Float, y1: Float, x2: Float, y2: Float): String {
+        val service = NudgeAccessibilityService.instance ?: return "{\"error\":\"无障碍服务未运行\"}"
+        val latch = java.util.concurrent.CountDownLatch(1)
+        var result = false
+        service.doSwipe(x1, y1, x2, y2, 300) { ok -> result = ok; latch.countDown() }
+        latch.await(2, java.util.concurrent.TimeUnit.SECONDS)
+        return if (result) "{\"success\":true}" else "{\"error\":\"滑动失败\"}"
     }
 
     private fun openApp(pkg: String): String {

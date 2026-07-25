@@ -109,4 +109,31 @@ class NudgeAccessibilityService : AccessibilityService() {
             }
         }
     }
+
+    fun doTap(x: Float, y: Float, callback: (Boolean) -> Unit) {
+        val path = android.graphics.Path()
+        path.moveTo(x, y)
+        val stroke = android.accessibilityservice.GestureDescription.StrokeDescription(path, 0, 100)
+        val builder = android.accessibilityservice.GestureDescription.Builder()
+        builder.addStroke(stroke)
+        val cb = object : android.accessibilityservice.AccessibilityService.GestureResultCallback() {
+            override fun onCompleted(gd: android.accessibilityservice.GestureDescription?) { callback(true) }
+            override fun onCancelled(gd: android.accessibilityservice.GestureDescription?) { callback(false) }
+        }
+        dispatchGesture(builder.build(), cb, null)
+    }
+
+    fun doSwipe(x1: Float, y1: Float, x2: Float, y2: Float, dur: Long, callback: (Boolean) -> Unit) {
+        val path = android.graphics.Path()
+        path.moveTo(x1, y1)
+        path.lineTo(x2, y2)
+        val stroke = android.accessibilityservice.GestureDescription.StrokeDescription(path, 0, dur)
+        val builder = android.accessibilityservice.GestureDescription.Builder()
+        builder.addStroke(stroke)
+        val cb = object : android.accessibilityservice.AccessibilityService.GestureResultCallback() {
+            override fun onCompleted(gd: android.accessibilityservice.GestureDescription?) { callback(true) }
+            override fun onCancelled(gd: android.accessibilityservice.GestureDescription?) { callback(false) }
+        }
+        dispatchGesture(builder.build(), cb, null)
+    }
 }
