@@ -324,6 +324,44 @@
 
         <View
             android:layout_width="match_parent"
+            android:layout_height="16dp" />
+
+        <!-- Card: 已注册工具 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/card_bg"
+            android:padding="18dp"
+            android:elevation="4dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="已注册工具"
+                android:textSize="13sp"
+                android:textColor="@color/text_secondary"
+                android:fontFamily="sans-serif-medium"
+                android:letterSpacing="0.05"
+                android:layout_marginBottom="4dp" />
+
+            <TextView
+                android:id="@+id/toolCountText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="11sp"
+                android:textColor="@color/text_dim"
+                android:layout_marginBottom="12dp" />
+
+            <LinearLayout
+                android:id="@+id/toolsContainer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical" />
+        </LinearLayout>
+
+        <View
+            android:layout_width="match_parent"
             android:layout_height="24dp" />
 
     </LinearLayout>
