@@ -478,7 +478,22 @@ class HttpServer(private val port: Int, private val context: Context) {
                     }
                     "open_app" -> {
                         val pkg = args.optString("package", "")
-                        val info = openApp(pkg)
+                        var info = openApp(pkg)
+                        if (info.contains(""error"")) {
+                            val appName = try {
+                                val ai = context.packageManager.getApplicationInfo(pkg, 0)
+                                context.packageManager.getApplicationLabel(ai).toString()
+                            } catch (_: Exception) { "" }
+                            if (appName.isNotEmpty()) {
+                                val svc = NudgeAccessibilityService.instance
+                                if (svc != null) {
+                                    val ok = svc.findAndClickApp(appName)
+                                    if (ok) {
+                                        info = "{\"success\":true,\"package\":\"$pkg\",\"method\":\"accessibility\"}"
+                                    }
+                                }
+                            }
+                        }
                         content.put(JSONObject().apply { put("type", "text"); put("text", info) })
                     }
                     "tap" -> {

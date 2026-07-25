@@ -171,4 +171,40 @@ class NudgeAccessibilityService : AccessibilityService() {
         }
     }
 
+
+    fun findAndClickApp(appName: String): Boolean {
+        performGlobalAction(GLOBAL_ACTION_HOME)
+        Thread.sleep(600)
+        val root = rootInActiveWindow ?: return false
+        try {
+            val nodes = root.findAccessibilityNodeInfosByText(appName)
+            for (node in nodes) {
+                try {
+                    if (node.isClickable) {
+                        node.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK)
+                        return true
+                    }
+                    var p = node.parent
+                    var depth = 0
+                    while (p != null && depth < 5) {
+                        if (p.isClickable) {
+                            p.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK)
+                            p.recycle()
+                            return true
+                        }
+                        val next = p.parent
+                        p.recycle()
+                        p = next
+                        depth++
+                    }
+                } finally {
+                    try { node.recycle() } catch (_: Exception) {}
+                }
+            }
+            return false
+        } finally {
+            try { root.recycle() } catch (_: Exception) {}
+        }
+    }
+
 }
