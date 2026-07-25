@@ -224,4 +224,26 @@ class NudgeAccessibilityService : AccessibilityService() {
         return false
     }
 
+
+    fun launchAppDirectly(pkg: String): Boolean {
+        return try {
+            val intent = packageManager.getLaunchIntentForPackage(pkg)
+            if (intent != null) {
+                intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                startActivity(intent)
+                true
+            } else {
+                // Try fallback intent
+                val fallback = android.content.Intent(android.content.Intent.ACTION_MAIN)
+                fallback.addCategory(android.content.Intent.CATEGORY_LAUNCHER)
+                fallback.setPackage(pkg)
+                fallback.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                startActivity(fallback)
+                true
+            }
+        } catch (e: Exception) {
+            false
+        }
+    }
+
 }
