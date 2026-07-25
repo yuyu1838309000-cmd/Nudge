@@ -12,10 +12,10 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
-import android.view.Gravity
 import android.view.View
 import android.widget.Button
-import android.widget.LinearLayout
+import android.widget.EditText
+import android.widget.ImageView
 import android.widget.TextView
 import androidx.activity.ComponentActivity
 import androidx.activity.result.contract.ActivityResultContracts
@@ -27,10 +27,7 @@ import java.net.Socket
 
 class MainActivity : ComponentActivity() {
 
-    companion object {
-    }
-
-    private lateinit var statusDot: View
+    private lateinit var statusDot: ImageView
     private lateinit var statusText: TextView
     private lateinit var toggleButton: Button
     private lateinit var testResult: TextView
@@ -40,187 +37,42 @@ class MainActivity : ComponentActivity() {
     private lateinit var permAccessBtn: Button
     private lateinit var permNotifText: TextView
     private lateinit var permNotifBtn: Button
+    private lateinit var apiKeyInput: EditText
+    private lateinit var modelInput: EditText
+    private lateinit var urlInput: EditText
+    private lateinit var promptInput: EditText
+    private lateinit var apiSaveBtn: Button
+    private lateinit var apiStatus: TextView
+    private lateinit var versionText: TextView
     private val handler = Handler(Looper.getMainLooper())
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
 
-        val layout = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER
-            setPadding(64, 64, 64, 64)
-            setBackgroundColor(Color.parseColor("#1a1a2e"))
-        }
+        statusDot = findViewById(R.id.statusDot)
+        statusText = findViewById(R.id.statusText)
+        toggleButton = findViewById(R.id.toggleButton)
+        testResult = findViewById(R.id.testResult)
+        permUsageText = findViewById(R.id.permUsageText)
+        permUsageBtn = findViewById(R.id.permUsageBtn)
+        permAccessText = findViewById(R.id.permAccessText)
+        permAccessBtn = findViewById(R.id.permAccessBtn)
+        permNotifText = findViewById(R.id.permNotifText)
+        permNotifBtn = findViewById(R.id.permNotifBtn)
+        apiKeyInput = findViewById(R.id.apiKeyInput)
+        modelInput = findViewById(R.id.modelInput)
+        urlInput = findViewById(R.id.urlInput)
+        promptInput = findViewById(R.id.promptInput)
+        apiSaveBtn = findViewById(R.id.apiSaveBtn)
+        apiStatus = findViewById(R.id.apiStatus)
+        versionText = findViewById(R.id.versionText)
 
-        layout.addView(TextView(this).apply {
-            text = "Nudge"
-            textSize = 32f
-            setTextColor(Color.WHITE)
-            gravity = Gravity.CENTER
-        })
+        try {
+            val info = packageManager.getPackageInfo(packageName, 0)
+            versionText.text = "v${info.versionName}"
+        } catch (_: Exception) {}
 
-        layout.addView(TextView(this).apply {
-            text = "v0.1.0"
-            textSize = 12f
-            setTextColor(Color.parseColor("#888888"))
-            gravity = Gravity.CENTER
-            setPadding(0, 8, 0, 0)
-        })
-
-        val statusRow = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER
-            setPadding(0, 36, 0, 12)
-        }
-
-        statusDot = View(this).apply {
-            val size = 14
-            layoutParams = LinearLayout.LayoutParams(size, size).apply {
-                setMargins(0, 0, 12, 0)
-            }
-        }
-        statusRow.addView(statusDot)
-
-        statusText = TextView(this).apply {
-            textSize = 16f
-            setTextColor(Color.WHITE)
-        }
-        statusRow.addView(statusText)
-        layout.addView(statusRow)
-
-        toggleButton = Button(this).apply {
-            textSize = 16f
-            setPadding(48, 16, 48, 16)
-        }
-        layout.addView(toggleButton)
-
-        testResult = TextView(this).apply {
-            textSize = 13f
-            setTextColor(Color.parseColor("#888888"))
-            gravity = Gravity.CENTER
-            setPadding(0, 24, 0, 0)
-        }
-        layout.addView(testResult)
-
-        // 权限状态区域
-        val permLabel = TextView(this).apply {
-            text = "权限状态"
-            textSize = 14f
-            setTextColor(Color.parseColor("#aaaaaa"))
-            gravity = Gravity.CENTER
-            setPadding(0, 32, 0, 12)
-        }
-        layout.addView(permLabel)
-
-        permUsageText = TextView(this).apply {
-            textSize = 13f
-            gravity = Gravity.CENTER
-        }
-        layout.addView(permUsageText)
-
-        permUsageBtn = Button(this).apply {
-            textSize = 14f
-            setPadding(32, 10, 32, 10)
-        }
-        layout.addView(permUsageBtn)
-
-        permAccessText = TextView(this).apply {
-            textSize = 13f
-            gravity = Gravity.CENTER
-            setPadding(0, 16, 0, 4)
-        }
-        layout.addView(permAccessText)
-
-        permAccessBtn = Button(this).apply {
-            textSize = 14f
-            setPadding(32, 10, 32, 10)
-        }
-        layout.addView(permAccessBtn)
-
-        permNotifText = TextView(this).apply {
-            textSize = 13f
-            gravity = Gravity.CENTER
-            setPadding(0, 16, 0, 4)
-        }
-        layout.addView(permNotifText)
-        permNotifBtn = Button(this).apply {
-            textSize = 14f
-            setPadding(32, 10, 32, 10)
-        }
-        layout.addView(permNotifBtn)
-
-        // API配置区
-        val apiLabel = TextView(this).apply {
-            text = "视觉模型配置"
-            textSize = 14f
-            setTextColor(Color.parseColor("#aaaaaa"))
-            gravity = Gravity.CENTER
-            setPadding(0, 28, 0, 10)
-        }
-        layout.addView(apiLabel)
-
-        val apiKeyInput = android.widget.EditText(this).apply {
-            hint = "API Key"
-            setHintTextColor(Color.parseColor("#555555"))
-            setTextColor(Color.WHITE)
-            textSize = 13f
-            gravity = Gravity.CENTER
-            setPadding(16, 10, 16, 10)
-            setBackgroundColor(Color.parseColor("#2a2a3e"))
-        }
-        layout.addView(apiKeyInput)
-
-        val modelInput = android.widget.EditText(this).apply {
-            hint = "模型名 (如 Qwen/Qwen2.5-VL-7B-Instruct)"
-            setHintTextColor(Color.parseColor("#555555"))
-            setTextColor(Color.WHITE)
-            textSize = 13f
-            gravity = Gravity.CENTER
-            setPadding(16, 10, 16, 10)
-            setBackgroundColor(Color.parseColor("#2a2a3e"))
-            setSingleLine(true)
-        }
-        layout.addView(modelInput)
-
-        val urlInput = android.widget.EditText(this).apply {
-            hint = "API URL"
-            setHintTextColor(Color.parseColor("#555555"))
-            setTextColor(Color.WHITE)
-            textSize = 13f
-            gravity = Gravity.CENTER
-            setPadding(16, 10, 16, 10)
-            setBackgroundColor(Color.parseColor("#2a2a3e"))
-            setSingleLine(true)
-        }
-        layout.addView(urlInput)
-
-        val promptInput = android.widget.EditText(this).apply {
-            hint = "分析Prompt"
-            setHintTextColor(Color.parseColor("#555555"))
-            setTextColor(Color.WHITE)
-            textSize = 13f
-            gravity = Gravity.CENTER
-            setPadding(16, 10, 16, 10)
-            setBackgroundColor(Color.parseColor("#2a2a3e"))
-        }
-        layout.addView(promptInput)
-
-        val apiSaveBtn = Button(this).apply {
-            text = "保存配置"
-            textSize = 14f
-            setPadding(32, 10, 32, 10)
-        }
-        layout.addView(apiSaveBtn)
-
-        val apiStatus = TextView(this).apply {
-            textSize = 12f
-            setTextColor(Color.parseColor("#888888"))
-            gravity = Gravity.CENTER
-            setPadding(0, 8, 0, 0)
-        }
-        layout.addView(apiStatus)
-
-        // 加载已保存的配置
         val prefs = getSharedPreferences("nudge", MODE_PRIVATE)
         apiKeyInput.setText(prefs.getString("api_key", ""))
         modelInput.setText(prefs.getString("model", "Qwen/Qwen3.6-35B-A3B"))
@@ -238,12 +90,11 @@ class MainActivity : ComponentActivity() {
             apiStatus.postDelayed({ apiStatus.text = "" }, 2000)
         }
 
-        setContentView(layout)
-
         toggleButton.setOnClickListener { toggleService() }
         permUsageBtn.setOnClickListener { openUsageAccessSettings() }
         permAccessBtn.setOnClickListener { openAccessibilitySettings() }
         permNotifBtn.setOnClickListener { openNotificationSettings() }
+
         updateUI()
         runSelfTest()
         updatePermissionUI()
@@ -279,31 +130,31 @@ class MainActivity : ComponentActivity() {
     private fun updatePermissionUI() {
         if (hasUsageAccess()) {
             permUsageText.text = "✓ 使用情况访问"
-            permUsageText.setTextColor(Color.parseColor("#4CAF50"))
+            permUsageText.setTextColor(Color.parseColor("#4ADE80"))
             permUsageBtn.visibility = View.GONE
         } else {
             permUsageText.text = "✗ 使用情况访问"
-            permUsageText.setTextColor(Color.parseColor("#ff6b6b"))
+            permUsageText.setTextColor(Color.parseColor("#F87171"))
             permUsageBtn.text = "去授权"
             permUsageBtn.visibility = View.VISIBLE
         }
         if (isAccessibilityEnabled()) {
             permAccessText.text = "✓ 无障碍服务"
-            permAccessText.setTextColor(Color.parseColor("#4CAF50"))
+            permAccessText.setTextColor(Color.parseColor("#4ADE80"))
             permAccessBtn.visibility = View.GONE
         } else {
             permAccessText.text = "✗ 无障碍服务"
-            permAccessText.setTextColor(Color.parseColor("#ff6b6b"))
+            permAccessText.setTextColor(Color.parseColor("#F87171"))
             permAccessBtn.text = "去开启"
             permAccessBtn.visibility = View.VISIBLE
         }
         if (NudgeNotificationService.isRunning) {
             permNotifText.text = "✓ 通知监听"
-            permNotifText.setTextColor(Color.parseColor("#4CAF50"))
+            permNotifText.setTextColor(Color.parseColor("#4ADE80"))
             permNotifBtn.visibility = View.GONE
         } else {
             permNotifText.text = "✗ 通知监听"
-            permNotifText.setTextColor(Color.parseColor("#ff6b6b"))
+            permNotifText.setTextColor(Color.parseColor("#F87171"))
             permNotifBtn.text = "去开启"
             permNotifBtn.visibility = View.VISIBLE
         }
@@ -315,8 +166,8 @@ class MainActivity : ComponentActivity() {
             contentResolver,
             Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
         ) ?: return false
-        return enabled.contains("NudgeAccessibilityService") || 
-               enabled.contains("nudge") || 
+        return enabled.contains("NudgeAccessibilityService") ||
+               enabled.contains("nudge") ||
                enabled.contains("Nudge")
     }
 
@@ -328,24 +179,6 @@ class MainActivity : ComponentActivity() {
         startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
     }
 
-    private fun hasLocationPermission(): Boolean {
-        return ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
-    }
-
-    private fun requestLocationPermission() {
-        requestPermissions(
-            arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION),
-            100
-        )
-    }
-
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == 100) {
-            updatePermissionUI()
-        }
-    }
-
     private fun openUsageAccessSettings() {
         startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
     }
@@ -353,13 +186,15 @@ class MainActivity : ComponentActivity() {
     private fun updateUI() {
         val running = isServiceRunning()
         if (running) {
-            statusDot.setBackgroundColor(Color.parseColor("#4CAF50"))
+            statusDot.setImageResource(R.drawable.dot_green)
             statusText.text = "MCP 运行中  :8809"
             toggleButton.text = "停止 MCP"
+            toggleButton.setBackgroundResource(R.drawable.btn_danger)
         } else {
-            statusDot.setBackgroundColor(Color.parseColor("#555555"))
+            statusDot.setImageResource(R.drawable.dot_gray)
             statusText.text = "MCP 已停止"
             toggleButton.text = "启动 MCP"
+            toggleButton.setBackgroundResource(R.drawable.btn_primary)
         }
     }
 
@@ -380,9 +215,9 @@ class MainActivity : ComponentActivity() {
                 s.close()
                 val body = sb.toString()
                 if (body.contains("pong")) {
-                    handler.post { testResult.text = "✓ MCP 自检通过" }
+                    handler.post { testResult.text = "✓ 自检通过" }
                 } else {
-                    handler.post { testResult.text = "✗ 响应异常: $body" }
+                    handler.post { testResult.text = "✗ 响应异常" }
                 }
             } catch (e: Exception) {
                 handler.post { testResult.text = "✗ 连接失败: ${e.message}" }
