@@ -275,6 +275,47 @@ class HttpServer(private val port: Int, private val context: Context) {
                         put("required", JSONArray().put("hour").put("minute"))
                     })
                 })
+                tools.put(JSONObject().apply {
+                    put("name", "lock_screen")
+                    put("description", "锁屏")
+                    put("inputSchema", JSONObject().apply { put("type", "object"); put("properties", JSONObject()) })
+                })
+                tools.put(JSONObject().apply {
+                    put("name", "media_play_pause")
+                    put("description", "媒体播放/暂停")
+                    put("inputSchema", JSONObject().apply { put("type", "object"); put("properties", JSONObject()) })
+                })
+                tools.put(JSONObject().apply {
+                    put("name", "media_next")
+                    put("description", "媒体下一首")
+                    put("inputSchema", JSONObject().apply { put("type", "object"); put("properties", JSONObject()) })
+                })
+                tools.put(JSONObject().apply {
+                    put("name", "media_previous")
+                    put("description", "媒体上一首")
+                    put("inputSchema", JSONObject().apply { put("type", "object"); put("properties", JSONObject()) })
+                })
+                tools.put(JSONObject().apply {
+                    put("name", "press_back")
+                    put("description", "返回键")
+                    put("inputSchema", JSONObject().apply { put("type", "object"); put("properties", JSONObject()) })
+                })
+                tools.put(JSONObject().apply {
+                    put("name", "press_home")
+                    put("description", "回桌面")
+                    put("inputSchema", JSONObject().apply { put("type", "object"); put("properties", JSONObject()) })
+                })
+                tools.put(JSONObject().apply {
+                    put("name", "open_app")
+                    put("description", "打开指定应用")
+                    put("inputSchema", JSONObject().apply {
+                        put("type", "object")
+                        put("properties", JSONObject().apply {
+                            put("package", JSONObject().apply { put("type", "string"); put("description", "应用包名") })
+                        })
+                        put("required", JSONArray().put("package"))
+                    })
+                })
                 JSONObject().apply { put("tools", tools) }
             }
             "tools/call" -> {
@@ -350,10 +391,36 @@ class HttpServer(private val port: Int, private val context: Context) {
                         val minute = params.optInt("minute", 0)
                         val message = params.optString("message", "闹钟")
                         val info = setAlarm(hour, minute, message)
-                        content.put(JSONObject().apply {
-                            put("type", "text")
-                            put("text", info)
-                        })
+                        content.put(JSONObject().apply { put("type", "text"); put("text", info) })
+                    }
+                    "lock_screen" -> {
+                        val info = performGlobalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_LOCK_SCREEN, "锁屏")
+                        content.put(JSONObject().apply { put("type", "text"); put("text", info) })
+                    }
+                    "media_play_pause" -> {
+                        val info = sendMediaKey(android.view.KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE, "播放/暂停")
+                        content.put(JSONObject().apply { put("type", "text"); put("text", info) })
+                    }
+                    "media_next" -> {
+                        val info = sendMediaKey(android.view.KeyEvent.KEYCODE_MEDIA_NEXT, "下一首")
+                        content.put(JSONObject().apply { put("type", "text"); put("text", info) })
+                    }
+                    "media_previous" -> {
+                        val info = sendMediaKey(android.view.KeyEvent.KEYCODE_MEDIA_PREVIOUS, "上一首")
+                        content.put(JSONObject().apply { put("type", "text"); put("text", info) })
+                    }
+                    "press_back" -> {
+                        val info = performGlobalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_BACK, "返回")
+                        content.put(JSONObject().apply { put("type", "text"); put("text", info) })
+                    }
+                    "press_home" -> {
+                        val info = performGlobalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_HOME, "桌面")
+                        content.put(JSONObject().apply { put("type", "text"); put("text", info) })
+                    }
+                    "open_app" -> {
+                        val pkg = params.optString("package", "")
+                        val info = openApp(pkg)
+                        content.put(JSONObject().apply { put("type", "text"); put("text", info) })
                     }
                     else -> {
                         content.put(JSONObject().apply {
@@ -513,6 +580,52 @@ class HttpServer(private val port: Int, private val context: Context) {
                 }
             }
             JSONObject().apply { put("events", events); put("count", events.length()) }.toString()
+        } catch (e: Exception) {
+            "{\"error\":\"${e.message}\"}"
+        }
+    }
+
+    private fun performGlobalAction(action: Int, name: String): String {
+        val service = NudgeAccessibilityService.instance ?: return "{\"error\":\"无障碍服务未运行\"}"
+        return try {
+            val ok = service.performGlobalAction(action)
+            if (ok) "{\"success\":true,\"action\":\"$name\"}" else "{\"error\":\"${name}失败\"}"
+        } catch (e: Exception) {
+            "{\"error\":\"${e.message}\"}"
+        }
+    }
+
+    private fun sendMediaKey(keyCode: Int, name: String): String {
+        return try {
+            val latch = java.util.concurrent.CountDownLatch(1)
+            var result = ""
+            android.os.Handler(android.os.Looper.getMainLooper()).post {
+                try {
+                    val am = context.getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager
+                    val event = android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, keyCode)
+                    am.dispatchMediaKeyEvent(event)
+                    val eventUp = android.view.KeyEvent(android.view.KeyEvent.ACTION_UP, keyCode)
+                    am.dispatchMediaKeyEvent(eventUp)
+                    result = "{\"success\":true,\"action\":\"$name\"}"
+                } catch (e: Exception) {
+                    result = "{\"error\":\"${e.message}\"}"
+                }
+                latch.countDown()
+            }
+            latch.await(2, java.util.concurrent.TimeUnit.SECONDS)
+            result.ifEmpty { "{\"error\":\"超时\"}" }
+        } catch (e: Exception) {
+            "{\"error\":\"${e.message}\"}"
+        }
+    }
+
+    private fun openApp(pkg: String): String {
+        return try {
+            val intent = context.packageManager.getLaunchIntentForPackage(pkg)
+            if (intent == null) return "{\"error\":\"未找到应用: $pkg\"}"
+            intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+            context.startActivity(intent)
+            "{\"success\":true,\"package\":\"$pkg\"}"
         } catch (e: Exception) {
             "{\"error\":\"${e.message}\"}"
         }
