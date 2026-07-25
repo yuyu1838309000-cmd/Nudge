@@ -4,6 +4,8 @@ import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
+import android.app.usage.UsageStatsManager
+import android.content.Context
 import android.content.Intent
 import android.os.IBinder
 import android.util.Log
@@ -18,7 +20,7 @@ class McpService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        server = HttpServer(8809)
+        server = HttpServer(8809, this)
         server.start()
         try {
             startForeground(1, createNotification())
@@ -52,7 +54,7 @@ class McpService : Service() {
     }
 }
 
-class HttpServer(private val port: Int) {
+class HttpServer(private val port: Int, private val context: Context) {
 
     private var running = false
     private lateinit var serverSocket: java.net.ServerSocket
@@ -166,25 +168,72 @@ class HttpServer(private val port: Int) {
                         put("properties", JSONObject())
                     })
                 })
+                tools.put(JSONObject().apply {
+                    put("name", "get_foreground_app")
+                    put("description", "获取当前前台应用的包名和应用名称")
+                    put("inputSchema", JSONObject().apply {
+                        put("type", "object")
+                        put("properties", JSONObject())
+                    })
+                })
                 JSONObject().apply { put("tools", tools) }
             }
             "tools/call" -> {
                 val toolName = params.optString("name", "")
                 val content = JSONArray()
-                if (toolName == "ping") {
-                    content.put(JSONObject().apply {
-                        put("type", "text")
-                        put("text", "pong")
-                    })
-                } else {
-                    content.put(JSONObject().apply {
-                        put("type", "text")
-                        put("text", "未知工具: $toolName")
-                    })
+                when (toolName) {
+                    "ping" -> {
+                        content.put(JSONObject().apply {
+                            put("type", "text")
+                            put("text", "pong")
+                        })
+                    }
+                    "get_foreground_app" -> {
+                        val info = getForegroundApp()
+                        content.put(JSONObject().apply {
+                            put("type", "text")
+                            put("text", info)
+                        })
+                    }
+                    else -> {
+                        content.put(JSONObject().apply {
+                            put("type", "text")
+                            put("text", "未知工具: $toolName")
+                        })
+                    }
                 }
                 JSONObject().apply { put("content", content) }
             }
             else -> JSONObject()
+        }
+    }
+
+    private fun getForegroundApp(): String {
+        return try {
+            val usageStatsManager = context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
+            val endTime = System.currentTimeMillis()
+            val beginTime = endTime - 10000 // 最近10秒
+            val usageStatsList = usageStatsManager.queryUsageStats(
+                UsageStatsManager.INTERVAL_DAILY, beginTime, endTime
+            )
+            if (usageStatsList.isNullOrEmpty()) {
+                return "无数据，请确保已授权使用情况访问权限"
+            }
+            // 取最近使用的应用
+            val recent = usageStatsList.maxByOrNull { it.lastTimeUsed }
+            if (recent != null) {
+                val pm = context.packageManager
+                val appName = try {
+                    pm.getApplicationLabel(pm.getApplicationInfo(recent.packageName, 0)).toString()
+                } catch (_: Exception) {
+                    recent.packageName
+                }
+                "{\"package\":\"${recent.packageName}\",\"app_name\":\"$appName\",\"last_used\":${recent.lastTimeUsed}}"
+            } else {
+                "无前台应用数据"
+            }
+        } catch (e: Exception) {
+            "{\"error\":\"${e.message}\"}"
         }
     }
 }
