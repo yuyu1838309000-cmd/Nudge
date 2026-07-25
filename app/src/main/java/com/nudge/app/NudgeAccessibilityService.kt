@@ -8,6 +8,17 @@ class NudgeAccessibilityService : AccessibilityService() {
     companion object {
         var currentPackage: String = ""
         var currentAppName: String = ""
+        var isRunning: Boolean = false
+    }
+
+    override fun onServiceConnected() {
+        super.onServiceConnected()
+        isRunning = true
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        isRunning = false
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {

@@ -193,12 +193,14 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun isAccessibilityEnabled(): Boolean {
-        val serviceName = "$packageName/.NudgeAccessibilityService"
-        val enabledServices = Settings.Secure.getString(
+        if (NudgeAccessibilityService.isRunning) return true
+        val enabled = Settings.Secure.getString(
             contentResolver,
             Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
         ) ?: return false
-        return enabledServices.contains(serviceName) || enabledServices.contains("com.nudge.app/.NudgeAccessibilityService")
+        return enabled.contains("NudgeAccessibilityService") || 
+               enabled.contains("nudge") || 
+               enabled.contains("Nudge")
     }
 
     private fun openAccessibilitySettings() {
