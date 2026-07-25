@@ -320,6 +320,7 @@ class HttpServer(private val port: Int, private val context: Context) {
             }
             "tools/call" -> {
                 val toolName = params.optString("name", "")
+                val args = params.optJSONObject("arguments") ?: JSONObject()
                 val content = JSONArray()
                 when (toolName) {
                     "ping" -> {
@@ -364,7 +365,7 @@ class HttpServer(private val port: Int, private val context: Context) {
                         })
                     }
                     "get_notifications" -> {
-                        val count = params.optInt("count", 10)
+                        val count = args.optInt("count", 10)
                         val info = getNotifications(count)
                         content.put(JSONObject().apply {
                             put("type", "text")
@@ -379,7 +380,7 @@ class HttpServer(private val port: Int, private val context: Context) {
                         })
                     }
                     "calendar_query" -> {
-                        val days = params.optInt("days", 7)
+                        val days = args.optInt("days", 7)
                         val info = getCalendar(days)
                         content.put(JSONObject().apply {
                             put("type", "text")
@@ -387,9 +388,9 @@ class HttpServer(private val port: Int, private val context: Context) {
                         })
                     }
                     "set_alarm" -> {
-                        val hour = params.optInt("hour", 0)
-                        val minute = params.optInt("minute", 0)
-                        val message = params.optString("message", "闹钟")
+                        val hour = args.optInt("hour", 0)
+                        val minute = args.optInt("minute", 0)
+                        val message = args.optString("message", "闹钟")
                         val info = setAlarm(hour, minute, message)
                         content.put(JSONObject().apply { put("type", "text"); put("text", info) })
                     }
@@ -418,7 +419,7 @@ class HttpServer(private val port: Int, private val context: Context) {
                         content.put(JSONObject().apply { put("type", "text"); put("text", info) })
                     }
                     "open_app" -> {
-                        val pkg = params.optString("package", "")
+                        val pkg = args.optString("package", "")
                         val info = openApp(pkg)
                         content.put(JSONObject().apply { put("type", "text"); put("text", info) })
                     }
