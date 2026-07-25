@@ -204,6 +204,14 @@ class HttpServer(private val port: Int, private val context: Context) {
                         put("properties", JSONObject())
                     })
                 })
+                tools.put(JSONObject().apply {
+                    put("name", "sensor_data")
+                    put("description", "获取手机传感器实时数据（加速度、光线、陀螺仪等）")
+                    put("inputSchema", JSONObject().apply {
+                        put("type", "object")
+                        put("properties", JSONObject())
+                    })
+                })
                 JSONObject().apply { put("tools", tools) }
             }
             "tools/call" -> {
@@ -225,6 +233,13 @@ class HttpServer(private val port: Int, private val context: Context) {
                     }
                     "screenshot_analyze" -> {
                         val info = screenshotAndAnalyze()
+                        content.put(JSONObject().apply {
+                            put("type", "text")
+                            put("text", info)
+                        })
+                    }
+                    "sensor_data" -> {
+                        val info = getSensorData()
                         content.put(JSONObject().apply {
                             put("type", "text")
                             put("text", info)
@@ -270,6 +285,51 @@ class HttpServer(private val port: Int, private val context: Context) {
             return result.ifEmpty { "{\"error\":\"超时\"}" }
         } catch (e: Exception) {
             return "{\"error\":\"${e.message}\"}"
+        }
+    }
+
+    private fun getSensorData(): String {
+        return try {
+            val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as android.hardware.SensorManager
+            val types = listOf(
+                android.hardware.Sensor.TYPE_ACCELEROMETER to "accelerometer",
+                android.hardware.Sensor.TYPE_LIGHT to "light",
+                android.hardware.Sensor.TYPE_GYROSCOPE to "gyroscope",
+                android.hardware.Sensor.TYPE_PROXIMITY to "proximity",
+                android.hardware.Sensor.TYPE_GRAVITY to "gravity",
+                android.hardware.Sensor.TYPE_MAGNETIC_FIELD to "magnetic"
+            )
+            val result = JSONObject()
+            val latches = mutableListOf<java.util.concurrent.CountDownLatch>()
+            val mainHandler = android.os.Handler(android.os.Looper.getMainLooper())
+
+            for ((type, name) in types) {
+                val sensor = sensorManager.getDefaultSensor(type)
+                if (sensor != null) {
+                    val latch = java.util.concurrent.CountDownLatch(1)
+                    latches.add(latch)
+                    val listener = object : android.hardware.SensorEventListener {
+                        override fun onSensorChanged(event: android.hardware.SensorEvent?) {
+                            if (event != null) {
+                                val values = JSONArray()
+                                for (v in event.values) values.put(v.toDouble().let { String.format("%.2f", it) })
+                                result.put(name, values)
+                            }
+                            sensorManager.unregisterListener(this)
+                            latch.countDown()
+                        }
+                        override fun onAccuracyChanged(sensor: android.hardware.Sensor?, accuracy: Int) {}
+                    }
+                    mainHandler.post {
+                        sensorManager.registerListener(listener, sensor, android.hardware.SensorManager.SENSOR_DELAY_NORMAL)
+                    }
+                }
+            }
+            // 等所有传感器返回（最多2秒）
+            for (latch in latches) latch.await(2, java.util.concurrent.TimeUnit.SECONDS)
+            result.toString()
+        } catch (e: Exception) {
+            "{\"error\":\"${e.message}\"}"
         }
     }
 
