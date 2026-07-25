@@ -165,6 +165,18 @@ class MainActivity : ComponentActivity() {
         }
         layout.addView(modelInput)
 
+        val urlInput = android.widget.EditText(this).apply {
+            hint = "API URL"
+            setHintTextColor(Color.parseColor("#555555"))
+            setTextColor(Color.WHITE)
+            textSize = 13f
+            gravity = Gravity.CENTER
+            setPadding(16, 10, 16, 10)
+            setBackgroundColor(Color.parseColor("#2a2a3e"))
+            setSingleLine(true)
+        }
+        layout.addView(urlInput)
+
         val apiSaveBtn = Button(this).apply {
             text = "保存配置"
             textSize = 14f
@@ -183,12 +195,14 @@ class MainActivity : ComponentActivity() {
         // 加载已保存的配置
         val prefs = getSharedPreferences("nudge", MODE_PRIVATE)
         apiKeyInput.setText(prefs.getString("api_key", ""))
-        modelInput.setText(prefs.getString("model", "Qwen/Qwen2.5-VL-7B-Instruct"))
+        modelInput.setText(prefs.getString("model", "Qwen/Qwen3.6-35B-A3B"))
+        urlInput.setText(prefs.getString("api_url", "https://api.siliconflow.cn/v1/chat/completions"))
 
         apiSaveBtn.setOnClickListener {
             prefs.edit()
                 .putString("api_key", apiKeyInput.text.toString().trim())
                 .putString("model", modelInput.text.toString().trim())
+                .putString("api_url", urlInput.text.toString().trim())
                 .apply()
             apiStatus.text = "已保存"
             apiStatus.postDelayed({ apiStatus.text = "" }, 2000)

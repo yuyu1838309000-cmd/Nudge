@@ -277,7 +277,8 @@ class HttpServer(private val port: Int, private val context: Context) {
         try {
             val prefs = context.getSharedPreferences("nudge", android.content.Context.MODE_PRIVATE)
             val apiKey = prefs.getString("api_key", "") ?: ""
-            val model = prefs.getString("model", "Qwen/Qwen2.5-VL-7B-Instruct") ?: "Qwen/Qwen2.5-VL-7B-Instruct"
+            val model = prefs.getString("model", "Qwen/Qwen3.6-35B-A3B") ?: "Qwen/Qwen3.6-35B-A3B"
+            val apiUrl = prefs.getString("api_url", "https://api.siliconflow.cn/v1/chat/completions") ?: "https://api.siliconflow.cn/v1/chat/completions"
             if (apiKey.isEmpty()) return "{\"error\":\"请先配置API Key\"}"
 
             val client = okhttp3.OkHttpClient.Builder()
@@ -311,7 +312,7 @@ class HttpServer(private val port: Int, private val context: Context) {
                 payload.toString()
             )
             val request = okhttp3.Request.Builder()
-                .url("https://api.siliconflow.cn/v1/chat/completions")
+                .url(apiUrl)
                 .header("Authorization", "Bearer $apiKey")
                 .post(body)
                 .build()
