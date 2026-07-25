@@ -143,7 +143,6 @@ class MainActivity : ComponentActivity() {
         val wipCount = tools.count { it.status == "wip" }
         toolCountText.text = "${tools.size} 个工具 | $okCount 可用 · $wipCount 调试中"
 
-        // Group by status for section headers
         val sections = listOf(
             "已就绪" to tools.filter { it.status == "ok" },
             "调试中" to tools.filter { it.status == "wip" },
@@ -183,7 +182,6 @@ class MainActivity : ComponentActivity() {
                     textSize = 13f
                     setTextColor(Color.parseColor("#9CA3AF"))
                     layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-                    fontFamily = null // monospace would be nice but let's keep it simple
                 }
                 row.addView(nameTv)
 
