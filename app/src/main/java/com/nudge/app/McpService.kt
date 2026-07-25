@@ -6,6 +6,7 @@ import android.app.NotificationManager
 import android.app.Service
 import android.content.Intent
 import android.os.IBinder
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import java.io.*
 
@@ -15,9 +16,13 @@ class McpService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        startForeground(1, createNotification())
         server = HttpServer(8809)
         server.start()
+        try {
+            startForeground(1, createNotification())
+        } catch (e: Exception) {
+            Log.w("Nudge", "startForeground failed: ${e.message}")
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -55,12 +60,13 @@ class HttpServer(private val port: Int) {
         Thread {
             try {
                 serverSocket = java.net.ServerSocket(port, 50, java.net.InetAddress.getByName("127.0.0.1"))
+                Log.i("Nudge", "MCP HTTP Server started on 127.0.0.1:$port")
                 while (running) {
                     val client = serverSocket.accept()
                     Thread { handle(client) }.start()
                 }
             } catch (e: Exception) {
-                if (running) e.printStackTrace()
+                Log.e("Nudge", "HttpServer error: ${e.message}", e)
             }
         }.start()
     }
