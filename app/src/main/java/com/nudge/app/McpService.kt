@@ -867,11 +867,8 @@ class HttpServer(private val port: Int, private val context: Context) {
                 put("samples", samples)
             }.toString()
         } catch (e: Exception) {
-            if (e.message?.contains("permission") == true || e is SecurityException) {
-                "{\"error\":\"未授权Health Connect。请在手机设置→健康→Health Connect→应用权限中授权Nudge读取心率\"}"
-            } else {
-                "{\"error\":\"\${e.message}\"}"
-            }
+            val cause = e.cause?.message ?: e.message ?: e.toString()
+            "{\"error\":\"\${e.javaClass.simpleName}: \${cause}\"}"
         }
     }
 
@@ -917,11 +914,8 @@ class HttpServer(private val port: Int, private val context: Context) {
                 }
             }.toString()
         } catch (e: Exception) {
-            if (e.message?.contains("permission") == true || e is SecurityException) {
-                "{\"error\":\"未授权Health Connect。请在手机设置→健康→Health Connect→应用权限中授权Nudge读取睡眠\"}"
-            } else {
-                "{\"error\":\"\${e.message}\"}"
-            }
+            val cause = e.cause?.message ?: e.message ?: e.toString()
+            "{\"error\":\"\${e.javaClass.simpleName}: \${cause}\"}"
         }
     }
 
