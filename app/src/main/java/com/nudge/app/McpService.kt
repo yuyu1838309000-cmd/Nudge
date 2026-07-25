@@ -867,8 +867,11 @@ class HttpServer(private val port: Int, private val context: Context) {
                 put("samples", samples)
             }.toString()
         } catch (e: Exception) {
-            val cause = e.cause?.message ?: e.message ?: e.toString()
-            "{\"error\":\"\${e.javaClass.simpleName}: \${cause}\"}"
+            if (e is SecurityException || e.message?.contains("permission") == true) {
+                "{\"error\":\"未授权Health Connect。请在 设置→隐私→运动健康 中授权Nudge\"}"
+            } else {
+                "{\"error\":\"Health Connect不可用(OS3限制): \${e.message}\"}"
+            }
         }
     }
 
@@ -914,8 +917,11 @@ class HttpServer(private val port: Int, private val context: Context) {
                 }
             }.toString()
         } catch (e: Exception) {
-            val cause = e.cause?.message ?: e.message ?: e.toString()
-            "{\"error\":\"\${e.javaClass.simpleName}: \${cause}\"}"
+            if (e is SecurityException || e.message?.contains("permission") == true) {
+                "{\"error\":\"未授权Health Connect。请在 设置→隐私→运动健康 中授权Nudge\"}"
+            } else {
+                "{\"error\":\"Health Connect不可用(OS3限制): \${e.message}\"}"
+            }
         }
     }
 
