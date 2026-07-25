@@ -225,25 +225,36 @@ class NudgeAccessibilityService : AccessibilityService() {
     }
 
 
-    fun launchAppDirectly(pkg: String): Boolean {
-        return try {
+    fun openApp(pkg: String): String {
+        // 1. Try direct launch via accessibility context
+        try {
             val intent = packageManager.getLaunchIntentForPackage(pkg)
             if (intent != null) {
                 intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
                 startActivity(intent)
-                true
-            } else {
-                // Try fallback intent
-                val fallback = android.content.Intent(android.content.Intent.ACTION_MAIN)
-                fallback.addCategory(android.content.Intent.CATEGORY_LAUNCHER)
-                fallback.setPackage(pkg)
-                fallback.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-                startActivity(fallback)
-                true
+                return "{\"success\":true,\"package\":\"$pkg\",\"method\":\"direct\"}"
             }
-        } catch (e: Exception) {
-            false
+        } catch (_: Exception) {}
+
+        // 2. Get app name - use getInstalledApplications for better coverage
+        var appName = ""
+        try {
+            val apps = packageManager.getInstalledApplications(0)
+            for (app in apps) {
+                if (app.packageName == pkg) {
+                    appName = packageManager.getApplicationLabel(app).toString()
+                    break
+                }
+            }
+        } catch (_: Exception) {}
+        if (appName.isEmpty()) return "{\"error\":\"未找到应用\"}"
+
+        // 3. Desktop click
+        if (findAndClickApp(appName)) {
+            return "{\"success\":true,\"package\":\"$pkg\",\"app_name\":\"$appName\",\"method\":\"desktop\"}"
         }
+        return "{\"error\":\"桌面未找到: $appName\"}"
     }
+
 
 }

@@ -481,22 +481,9 @@ class HttpServer(private val port: Int, private val context: Context) {
                         val svc = NudgeAccessibilityService.instance
                         if (svc == null) {
                             content.put(JSONObject().apply { put("type", "text"); put("text", "{\"error\":\"无障碍服务未运行\"}") })
-                        } else if (svc.launchAppDirectly(pkg)) {
-                            content.put(JSONObject().apply { put("type", "text"); put("text", "{\"success\":true,\"package\":\"$pkg\",\"method\":\"direct\"}") })
                         } else {
-                            // Fallback: find on desktop
-                            val appName = try {
-                                val ai = context.packageManager.getApplicationInfo(pkg, 0)
-                                context.packageManager.getApplicationLabel(ai).toString()
-                            } catch (_: Exception) { "" }
-                            if (appName.isEmpty()) {
-                                content.put(JSONObject().apply { put("type", "text"); put("text", "{\"error\":\"未找到: $pkg\"}") })
-                            } else {
-                                val ok = svc.findAndClickApp(appName)
-                                val info = if (ok) "{\"success\":true,\"package\":\"$pkg\",\"app_name\":\"$appName\",\"method\":\"desktop\"}"
-                                          else "{\"error\":\"无法打开: $appName\"}"
-                                content.put(JSONObject().apply { put("type", "text"); put("text", info) })
-                            }
+                            val info = svc.openApp(pkg)
+                            content.put(JSONObject().apply { put("type", "text"); put("text", info) })
                         }
                     }
                     "tap" -> {
