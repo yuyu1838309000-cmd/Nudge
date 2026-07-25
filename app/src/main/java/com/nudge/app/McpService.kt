@@ -241,6 +241,35 @@ class HttpServer(private val port: Int, private val context: Context) {
                         })
                     })
                 })
+                tools.put(JSONObject().apply {
+                    put("name", "get_steps")
+                    put("description", "获取今日步数")
+                    put("inputSchema", JSONObject().apply {
+                        put("type", "object")
+                        put("properties", JSONObject())
+                    })
+                })
+                tools.put(JSONObject().apply {
+                    put("name", "get_clipboard")
+                    put("description", "读取当前剪贴板内容")
+                    put("inputSchema", JSONObject().apply {
+                        put("type", "object")
+                        put("properties", JSONObject())
+                    })
+                })
+                tools.put(JSONObject().apply {
+                    put("name", "calendar_query")
+                    put("description", "查询日历事件（需授权日历权限）")
+                    put("inputSchema", JSONObject().apply {
+                        put("type", "object")
+                        put("properties", JSONObject().apply {
+                            put("days", JSONObject().apply {
+                                put("type", "integer")
+                                put("description", "查询未来天数，默认7")
+                            })
+                        })
+                    })
+                })
                 JSONObject().apply { put("tools", tools) }
             }
             "tools/call" -> {
@@ -291,6 +320,28 @@ class HttpServer(private val port: Int, private val context: Context) {
                     "get_notifications" -> {
                         val count = params.optInt("count", 10)
                         val info = getNotifications(count)
+                        content.put(JSONObject().apply {
+                            put("type", "text")
+                            put("text", info)
+                        })
+                    }
+                    "get_steps" -> {
+                        val info = getSteps()
+                        content.put(JSONObject().apply {
+                            put("type", "text")
+                            put("text", info)
+                        })
+                    }
+                    "get_clipboard" -> {
+                        val info = getClipboard()
+                        content.put(JSONObject().apply {
+                            put("type", "text")
+                            put("text", info)
+                        })
+                    }
+                    "calendar_query" -> {
+                        val days = params.optInt("days", 7)
+                        val info = getCalendar(days)
                         content.put(JSONObject().apply {
                             put("type", "text")
                             put("text", info)
@@ -415,6 +466,79 @@ class HttpServer(private val port: Int, private val context: Context) {
                 put("charging", charging)
                 put("network", network)
             }.toString()
+        } catch (e: Exception) {
+            "{\"error\":\"${e.message}\"}"
+        }
+    }
+
+    private fun getSteps(): String {
+        return try {
+            val sm = context.getSystemService(Context.SENSOR_SERVICE) as android.hardware.SensorManager
+            val sensor = sm.getDefaultSensor(android.hardware.Sensor.TYPE_STEP_COUNTER)
+            if (sensor == null) return "{\"error\":\"无计步传感器\"}"
+            val latch = java.util.concurrent.CountDownLatch(1)
+            var steps = "0"
+            val listener = object : android.hardware.SensorEventListener {
+                override fun onSensorChanged(event: android.hardware.SensorEvent?) {
+                    if (event != null && event.values.isNotEmpty()) {
+                        steps = event.values[0].toLong().toString()
+                    }
+                    sm.unregisterListener(this)
+                    latch.countDown()
+                }
+                override fun onAccuracyChanged(sensor: android.hardware.Sensor?, accuracy: Int) {}
+            }
+            android.os.Handler(android.os.Looper.getMainLooper()).post {
+                sm.registerListener(listener, sensor, android.hardware.SensorManager.SENSOR_DELAY_NORMAL)
+            }
+            latch.await(2, java.util.concurrent.TimeUnit.SECONDS)
+            "{\"steps\":$steps}"
+        } catch (e: Exception) {
+            "{\"error\":\"${e.message}\"}"
+        }
+    }
+
+    private fun getClipboard(): String {
+        return try {
+            val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+            val clip = cm.primaryClip
+            if (clip == null || clip.itemCount == 0) return "{\"text\":\"\"}"
+            val text = clip.getItemAt(0).coerceToText(context).toString()
+            "{\"text\":\"${text.replace("\"","\\\"").replace("\n"," ")}\"}"
+        } catch (e: Exception) {
+            "{\"error\":\"${e.message}\"}"
+        }
+    }
+
+    private fun getCalendar(days: Int): String {
+        return try {
+            if (androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.READ_CALENDAR) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                return "{\"error\":\"未授权日历权限\"}"
+            }
+            val now = System.currentTimeMillis()
+            val end = now + days * 86400000L
+            val uri = android.provider.CalendarContract.Events.CONTENT_URI
+            val projection = arrayOf(
+                android.provider.CalendarContract.Events.TITLE,
+                android.provider.CalendarContract.Events.DTSTART,
+                android.provider.CalendarContract.Events.DTEND,
+                android.provider.CalendarContract.Events.EVENT_LOCATION
+            )
+            val selection = "dtstart >= ? AND dtstart <= ?"
+            val args = arrayOf(now.toString(), end.toString())
+            val cursor = context.contentResolver.query(uri, projection, selection, args, "dtstart ASC")
+            val events = JSONArray()
+            cursor?.use {
+                while (it.moveToNext()) {
+                    events.put(JSONObject().apply {
+                        put("title", it.getString(0) ?: "")
+                        put("start", it.getLong(1))
+                        put("end", it.getLong(2))
+                        put("location", it.getString(3) ?: "")
+                    })
+                }
+            }
+            JSONObject().apply { put("events", events); put("count", events.length()) }.toString()
         } catch (e: Exception) {
             "{\"error\":\"${e.message}\"}"
         }
