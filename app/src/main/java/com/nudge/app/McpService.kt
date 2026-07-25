@@ -275,13 +275,18 @@ class HttpServer(private val port: Int, private val context: Context) {
 
     private fun analyzeWithAI(base64: String): String {
         try {
+            val prefs = context.getSharedPreferences("nudge", android.content.Context.MODE_PRIVATE)
+            val apiKey = prefs.getString("api_key", "") ?: ""
+            val model = prefs.getString("model", "Qwen/Qwen2.5-VL-7B-Instruct") ?: "Qwen/Qwen2.5-VL-7B-Instruct"
+            if (apiKey.isEmpty()) return "{\"error\":\"请先配置API Key\"}"
+
             val client = okhttp3.OkHttpClient.Builder()
                 .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
                 .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
                 .build()
             
             val payload = JSONObject()
-            payload.put("model", "Qwen/Qwen2-VL-72B-Instruct")
+            payload.put("model", model)
             val messages = JSONArray()
             val msg = JSONObject()
             msg.put("role", "user")
@@ -307,7 +312,7 @@ class HttpServer(private val port: Int, private val context: Context) {
             )
             val request = okhttp3.Request.Builder()
                 .url("https://api.siliconflow.cn/v1/chat/completions")
-                .header("Authorization", "Bearer sk-yqrhldngerusgndhjqbaqvqbossnfatgpyorepnxdjhtkmtf")
+                .header("Authorization", "Bearer $apiKey")
                 .post(body)
                 .build()
 

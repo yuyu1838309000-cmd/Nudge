@@ -132,6 +132,68 @@ class MainActivity : ComponentActivity() {
         }
         layout.addView(permAccessBtn)
 
+        // API配置区
+        val apiLabel = TextView(this).apply {
+            text = "视觉模型配置"
+            textSize = 14f
+            setTextColor(Color.parseColor("#aaaaaa"))
+            gravity = Gravity.CENTER
+            setPadding(0, 28, 0, 10)
+        }
+        layout.addView(apiLabel)
+
+        val apiKeyInput = android.widget.EditText(this).apply {
+            hint = "API Key"
+            setHintTextColor(Color.parseColor("#555555"))
+            setTextColor(Color.WHITE)
+            textSize = 13f
+            gravity = Gravity.CENTER
+            setPadding(16, 10, 16, 10)
+            setBackgroundColor(Color.parseColor("#2a2a3e"))
+        }
+        layout.addView(apiKeyInput)
+
+        val modelInput = android.widget.EditText(this).apply {
+            hint = "模型名 (如 Qwen/Qwen2.5-VL-7B-Instruct)"
+            setHintTextColor(Color.parseColor("#555555"))
+            setTextColor(Color.WHITE)
+            textSize = 13f
+            gravity = Gravity.CENTER
+            setPadding(16, 10, 16, 10)
+            setBackgroundColor(Color.parseColor("#2a2a3e"))
+            setSingleLine(true)
+        }
+        layout.addView(modelInput)
+
+        val apiSaveBtn = Button(this).apply {
+            text = "保存配置"
+            textSize = 14f
+            setPadding(32, 10, 32, 10)
+        }
+        layout.addView(apiSaveBtn)
+
+        val apiStatus = TextView(this).apply {
+            textSize = 12f
+            setTextColor(Color.parseColor("#888888"))
+            gravity = Gravity.CENTER
+            setPadding(0, 8, 0, 0)
+        }
+        layout.addView(apiStatus)
+
+        // 加载已保存的配置
+        val prefs = getSharedPreferences("nudge", MODE_PRIVATE)
+        apiKeyInput.setText(prefs.getString("api_key", ""))
+        modelInput.setText(prefs.getString("model", "Qwen/Qwen2.5-VL-7B-Instruct"))
+
+        apiSaveBtn.setOnClickListener {
+            prefs.edit()
+                .putString("api_key", apiKeyInput.text.toString().trim())
+                .putString("model", modelInput.text.toString().trim())
+                .apply()
+            apiStatus.text = "已保存"
+            apiStatus.postDelayed({ apiStatus.text = "" }, 2000)
+        }
+
         setContentView(layout)
 
         toggleButton.setOnClickListener { toggleService() }
