@@ -104,8 +104,10 @@ class HttpServer(private val port: Int) {
             }
 
             val (code, resp) = route(method, path, body)
+            val respBytes = resp.toByteArray(Charsets.UTF_8)
             output.write("HTTP/1.1 $code\r\n")
-            output.write("Content-Type: application/json\r\n")
+            output.write("Content-Type: application/json; charset=utf-8\r\n")
+            output.write("Content-Length: ${respBytes.size}\r\n")
             output.write("Connection: close\r\n")
             output.write("\r\n")
             output.write(resp)
