@@ -95,7 +95,7 @@ class HttpServer(private val port: Int, private val context: Context) {
             while (true) {
                 val line = input.readLine() ?: break
                 if (line.isEmpty()) break
-                if (line.startsWith("Content-Length:")) {
+                if (line.startsWith("Content-Length:") || line.startsWith("content-length:")) {
                     contentLength = line.substringAfter(":").trim().toIntOrNull() ?: 0
                 }
             }
@@ -103,8 +103,22 @@ class HttpServer(private val port: Int, private val context: Context) {
             var body = ""
             if (contentLength > 0) {
                 val buf = CharArray(contentLength)
-                input.read(buf, 0, contentLength)
-                body = String(buf)
+                var total = 0
+                while (total < contentLength) {
+                    val n = input.read(buf, total, contentLength - total)
+                    if (n <= 0) break
+                    total += n
+                }
+                body = String(buf, 0, total)
+            } else if (method.uppercase() == "POST") {
+                // 尝试读取所有剩余数据
+                val sb = StringBuilder()
+                while (input.ready()) {
+                    val c = input.read()
+                    if (c == -1) break
+                    sb.append(c.toChar())
+                }
+                body = sb.toString()
             }
 
             val (code, resp) = route(method, path, body)
@@ -117,7 +131,9 @@ class HttpServer(private val port: Int, private val context: Context) {
             output.write(resp)
             output.flush()
             socket.close()
-        } catch (_: Exception) {}
+        } catch (e: Exception) {
+            Log.e("Nudge", "handle error: ${e.message}", e)
+        }
     }
 
     private fun route(httpMethod: String, path: String, body: String): Pair<String, String> {
@@ -138,7 +154,10 @@ class HttpServer(private val port: Int, private val context: Context) {
                     resp.put("result", result)
                     return "200 OK" to resp.toString()
                 }
-            } catch (_: Exception) {}
+            } catch (e: Exception) {
+                Log.w("Nudge", "JSON parse error: ${e.message}, body: $body")
+                return "200 OK" to "{\"error\":\"${e.message}\"}"
+            }
         }
 
         return "200 OK" to "{\"result\":\"Nudge MCP v0.1.0\"}"
@@ -212,14 +231,13 @@ class HttpServer(private val port: Int, private val context: Context) {
         return try {
             val usageStatsManager = context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
             val endTime = System.currentTimeMillis()
-            val beginTime = endTime - 10000 // 最近10秒
+            val beginTime = endTime - 10000
             val usageStatsList = usageStatsManager.queryUsageStats(
                 UsageStatsManager.INTERVAL_DAILY, beginTime, endTime
             )
             if (usageStatsList.isNullOrEmpty()) {
                 return "无数据，请确保已授权使用情况访问权限"
             }
-            // 取最近使用的应用
             val recent = usageStatsList.maxByOrNull { it.lastTimeUsed }
             if (recent != null) {
                 val pm = context.packageManager
