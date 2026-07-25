@@ -212,6 +212,22 @@ class HttpServer(private val port: Int, private val context: Context) {
                         put("properties", JSONObject())
                     })
                 })
+                tools.put(JSONObject().apply {
+                    put("name", "device_status")
+                    put("description", "获取设备状态：锁屏状态、电量、充电状态、网络类型")
+                    put("inputSchema", JSONObject().apply {
+                        put("type", "object")
+                        put("properties", JSONObject())
+                    })
+                })
+                tools.put(JSONObject().apply {
+                    put("name", "get_location")
+                    put("description", "获取当前GPS定位（经纬度）")
+                    put("inputSchema", JSONObject().apply {
+                        put("type", "object")
+                        put("properties", JSONObject())
+                    })
+                })
                 JSONObject().apply { put("tools", tools) }
             }
             "tools/call" -> {
@@ -240,6 +256,20 @@ class HttpServer(private val port: Int, private val context: Context) {
                     }
                     "sensor_data" -> {
                         val info = getSensorData()
+                        content.put(JSONObject().apply {
+                            put("type", "text")
+                            put("text", info)
+                        })
+                    }
+                    "device_status" -> {
+                        val info = getDeviceStatus()
+                        content.put(JSONObject().apply {
+                            put("type", "text")
+                            put("text", info)
+                        })
+                    }
+                    "get_location" -> {
+                        val info = getLocation()
                         content.put(JSONObject().apply {
                             put("type", "text")
                             put("text", info)
@@ -328,6 +358,72 @@ class HttpServer(private val port: Int, private val context: Context) {
             // 等所有传感器返回（最多2秒）
             for (latch in latches) latch.await(2, java.util.concurrent.TimeUnit.SECONDS)
             result.toString()
+        } catch (e: Exception) {
+            "{\"error\":\"${e.message}\"}"
+        }
+    }
+
+    private fun getDeviceStatus(): String {
+        return try {
+            val km = context.getSystemService(Context.KEYGUARD_SERVICE) as android.app.KeyguardManager
+            val bm = context.getSystemService(Context.BATTERY_SERVICE) as android.os.BatteryManager
+            val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+
+            val locked = km.isKeyguardLocked
+            val battery = bm.getIntProperty(android.os.BatteryManager.BATTERY_PROPERTY_CAPACITY)
+            val charging = when (bm.getIntProperty(android.os.BatteryManager.BATTERY_PROPERTY_STATUS)) {
+                android.os.BatteryManager.BATTERY_STATUS_CHARGING -> "charging"
+                android.os.BatteryManager.BATTERY_STATUS_DISCHARGING -> "discharging"
+                android.os.BatteryManager.BATTERY_STATUS_FULL -> "full"
+                else -> "unknown"
+            }
+            val network = try {
+                val nw = cm.activeNetwork
+                val caps = cm.getNetworkCapabilities(nw)
+                when {
+                    caps == null -> "none"
+                    caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI) -> "wifi"
+                    caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_CELLULAR) -> "cellular"
+                    else -> "other"
+                }
+            } catch (_: Exception) { "unknown" }
+
+            JSONObject().apply {
+                put("screen_locked", locked)
+                put("battery", battery)
+                put("charging", charging)
+                put("network", network)
+            }.toString()
+        } catch (e: Exception) {
+            "{\"error\":\"${e.message}\"}"
+        }
+    }
+
+    private fun getLocation(): String {
+        return try {
+            if (androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.ACCESS_FINE_LOCATION) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                return "{\"error\":\"未授权定位权限\"}"
+            }
+            val lm = context.getSystemService(Context.LOCATION_SERVICE) as android.location.LocationManager
+            var best: android.location.Location? = null
+            for (provider in listOf(android.location.LocationManager.GPS_PROVIDER, android.location.LocationManager.NETWORK_PROVIDER)) {
+                try {
+                    val loc = lm.getLastKnownLocation(provider)
+                    if (loc != null && (best == null || loc.accuracy < best.accuracy)) {
+                        best = loc
+                    }
+                } catch (_: Exception) {}
+            }
+            if (best != null) {
+                JSONObject().apply {
+                    put("latitude", best.latitude)
+                    put("longitude", best.longitude)
+                    put("accuracy", best.accuracy.toDouble())
+                    put("provider", best.provider ?: "unknown")
+                }.toString()
+            } else {
+                "{\"error\":\"无法获取位置，请确保GPS已开启\"}"
+            }
         } catch (e: Exception) {
             "{\"error\":\"${e.message}\"}"
         }
