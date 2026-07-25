@@ -12,6 +12,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
+import android.util.Log
 import android.view.Gravity
 import android.view.View
 import android.widget.Button
@@ -129,6 +130,7 @@ class MainActivity : ComponentActivity() {
         permAccessBtn.setOnClickListener { openAccessibilitySettings() }
         permNotifBtn.setOnClickListener { openNotificationSettings() }
 
+        initHealthConnect()
         updateUI()
         runSelfTest()
         updatePermissionUI()
@@ -198,6 +200,17 @@ class MainActivity : ComponentActivity() {
                 row.addView(descTv)
 
                 toolsContainer.addView(row)
+            }
+        }
+    }
+
+    private fun initHealthConnect() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            try {
+                androidx.health.connect.client.HealthConnectClient.getOrCreate(this)
+                Log.i("Nudge", "HealthConnect initialized")
+            } catch (e: Exception) {
+                Log.w("Nudge", "HealthConnect init skipped: ${e.message}")
             }
         }
     }
