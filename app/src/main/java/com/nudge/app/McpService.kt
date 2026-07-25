@@ -504,17 +504,17 @@ class HttpServer(private val port: Int, private val context: Context) {
 
     private fun getClipboard(): String {
         return try {
-            // Android 10+限制后台读剪贴板，优先读缓存
-            val cached = context.getSharedPreferences("nudge", android.content.Context.MODE_PRIVATE).getString("clipboard_cache", "") ?: ""
-            if (cached.isNotEmpty()) {
-                return "{\"text\":\"${cached.replace("\"","\\\"").replace("\n"," ")}\"}"
+            // 优先读MainActivity缓存的静态变量
+            val staticCache = MainActivity.clipboardCache
+            if (staticCache.isNotEmpty()) {
+                return "{\"text\":\"${staticCache.replace("\"","\\\"").replace("\n"," ")}\"}"
             }
-            // 前台服务尝试直接读
-            val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-            val clip = cm.primaryClip
-            if (clip == null || clip.itemCount == 0) return "{\"text\":\"\"}"
-            val text = clip.getItemAt(0).coerceToText(context).toString()
-            "{\"text\":\"${text.replace("\"","\\\"").replace("\n"," ")}\"}"
+            // 其次读SharedPreferences
+            val prefs = context.getSharedPreferences("nudge", android.content.Context.MODE_PRIVATE).getString("clipboard_cache", "") ?: ""
+            if (prefs.isNotEmpty()) {
+                return "{\"text\":\"${prefs.replace("\"","\\\"").replace("\n"," ")}\"}"
+            }
+            "{\"text\":\"\",\"note\":\"请打开Nudge后再试\"}"
         } catch (e: Exception) {
             "{\"error\":\"${e.message}\"}"
         }

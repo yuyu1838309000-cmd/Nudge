@@ -27,6 +27,10 @@ import java.net.Socket
 
 class MainActivity : ComponentActivity() {
 
+    companion object {
+        var clipboardCache: String = ""
+    }
+
     private lateinit var statusDot: View
     private lateinit var statusText: TextView
     private lateinit var toggleButton: Button
@@ -260,7 +264,10 @@ class MainActivity : ComponentActivity() {
             val clip = cm.primaryClip
             if (clip != null && clip.itemCount > 0) {
                 val text = clip.getItemAt(0).coerceToText(this).toString()
-                getSharedPreferences("nudge", MODE_PRIVATE).edit().putString("clipboard_cache", text).apply()
+                if (text.isNotEmpty()) {
+                    clipboardCache = text
+                    getSharedPreferences("nudge", MODE_PRIVATE).edit().putString("clipboard_cache", text).apply()
+                }
             }
         } catch (_: Exception) {}
     }
