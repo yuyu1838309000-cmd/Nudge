@@ -262,6 +262,19 @@ class HttpServer(private val port: Int, private val context: Context) {
                         })
                     })
                 })
+                tools.put(JSONObject().apply {
+                    put("name", "set_alarm")
+                    put("description", "设置系统闹钟")
+                    put("inputSchema", JSONObject().apply {
+                        put("type", "object")
+                        put("properties", JSONObject().apply {
+                            put("hour", JSONObject().apply { put("type", "integer"); put("description", "小时（0-23）") })
+                            put("minute", JSONObject().apply { put("type", "integer"); put("description", "分钟（0-59）") })
+                            put("message", JSONObject().apply { put("type", "string"); put("description", "闹钟备注（可选）") })
+                        })
+                        put("required", JSONArray().put("hour").put("minute"))
+                    })
+                })
                 JSONObject().apply { put("tools", tools) }
             }
             "tools/call" -> {
@@ -327,6 +340,16 @@ class HttpServer(private val port: Int, private val context: Context) {
                     "calendar_query" -> {
                         val days = params.optInt("days", 7)
                         val info = getCalendar(days)
+                        content.put(JSONObject().apply {
+                            put("type", "text")
+                            put("text", info)
+                        })
+                    }
+                    "set_alarm" -> {
+                        val hour = params.optInt("hour", 0)
+                        val minute = params.optInt("minute", 0)
+                        val message = params.optString("message", "闹钟")
+                        val info = setAlarm(hour, minute, message)
                         content.put(JSONObject().apply {
                             put("type", "text")
                             put("text", info)
@@ -490,6 +513,26 @@ class HttpServer(private val port: Int, private val context: Context) {
                 }
             }
             JSONObject().apply { put("events", events); put("count", events.length()) }.toString()
+        } catch (e: Exception) {
+            "{\"error\":\"${e.message}\"}"
+        }
+    }
+
+    private fun setAlarm(hour: Int, minute: Int, message: String): String {
+        return try {
+            val am = context.getSystemService(Context.ALARM_SERVICE) as android.app.AlarmManager
+            val cal = java.util.Calendar.getInstance()
+            cal.set(java.util.Calendar.HOUR_OF_DAY, hour)
+            cal.set(java.util.Calendar.MINUTE, minute)
+            cal.set(java.util.Calendar.SECOND, 0)
+            if (cal.timeInMillis <= System.currentTimeMillis()) {
+                cal.add(java.util.Calendar.DAY_OF_MONTH, 1)
+            }
+            val intent = android.content.Intent(context, McpService::class.java)
+            val pi = android.app.PendingIntent.getBroadcast(context, 0, intent, android.app.PendingIntent.FLAG_IMMUTABLE)
+            val info = android.app.AlarmManager.AlarmClockInfo(cal.timeInMillis, pi)
+            am.setAlarmClock(info, pi)
+            "{\"success\":true,\"time\":\"${hour}:${String.format("%02d", minute)}\",\"message\":\"${message}\"}"
         } catch (e: Exception) {
             "{\"error\":\"${e.message}\"}"
         }
