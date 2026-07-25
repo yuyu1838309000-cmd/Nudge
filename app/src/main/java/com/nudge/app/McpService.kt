@@ -358,6 +358,22 @@ class HttpServer(private val port: Int, private val context: Context) {
                         put("properties", JSONObject())
                     })
                 })
+                tools.put(JSONObject().apply {
+                    put("name", "get_heart_rate")
+                    put("description", "从Health Connect获取心率数据（需小米运动/Zepp Life同步）")
+                    put("inputSchema", JSONObject().apply {
+                        put("type", "object")
+                        put("properties", JSONObject())
+                    })
+                })
+                tools.put(JSONObject().apply {
+                    put("name", "get_sleep")
+                    put("description", "从Health Connect获取睡眠数据（需小米运动/Zepp Life同步）")
+                    put("inputSchema", JSONObject().apply {
+                        put("type", "object")
+                        put("properties", JSONObject())
+                    })
+                })
                 JSONObject().apply { put("tools", tools) }
             }
             "tools/call" -> {
@@ -485,6 +501,14 @@ class HttpServer(private val port: Int, private val context: Context) {
                     }
                     "read_screen" -> {
                         val info = readScreen()
+                        content.put(JSONObject().apply { put("type", "text"); put("text", info) })
+                    }
+                    "get_heart_rate" -> {
+                        val info = getHeartRate()
+                        content.put(JSONObject().apply { put("type", "text"); put("text", info) })
+                    }
+                    "get_sleep" -> {
+                        val info = getSleepData()
                         content.put(JSONObject().apply { put("type", "text"); put("text", info) })
                     }
                     else -> {
@@ -797,6 +821,103 @@ class HttpServer(private val port: Int, private val context: Context) {
             service.readScreen()
         } catch (e: Exception) {
             "{\"error\":\"\${e.message}\"}"
+        }
+    }
+
+    private fun getHeartRate(): String {
+        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            return "{\"error\":\"Health Connect 需要 Android 14+\"}"
+        }
+        return try {
+            val client = androidx.health.connect.client.HealthConnectClient.getOrCreate(context)
+            val now = java.time.Instant.now()
+            val start = now.minus(java.time.Duration.ofDays(1))
+            val response = client.readRecords(
+                androidx.health.connect.client.request.ReadRecordsRequest(
+                    recordType = androidx.health.connect.client.records.HeartRateRecord::class,
+                    timeRangeFilter = androidx.health.connect.client.time.TimeRangeFilter.between(start, now),
+                    pageSize = 200
+                )
+            )
+            val records = response.records
+            if (records.isEmpty()) return "{\"error\":\"未找到心率数据，请确认小米运动已同步\"}"
+            
+            val samples = org.json.JSONArray()
+            var min = Int.MAX_VALUE; var max = 0; var sum = 0L
+            for (r in records) {
+                for (s in r.samples) {
+                    val bpm = s.beatsPerMinute
+                    samples.put(org.json.JSONObject().apply {
+                        put("bpm", bpm)
+                        put("time", s.time.toString())
+                    })
+                    if (bpm < min) min = bpm
+                    if (bpm > max) max = bpm
+                    sum += bpm
+                }
+            }
+            org.json.JSONObject().apply {
+                put("avg", if (samples.length() > 0) sum / samples.length() else 0)
+                put("min", if (min != Int.MAX_VALUE) min else 0)
+                put("max", max)
+                put("count", samples.length())
+                put("latest", if (samples.length() > 0) samples.getJSONObject(samples.length() - 1).optInt("bpm") else 0)
+                put("samples", samples)
+            }.toString()
+        } catch (e: Exception) {
+            if (e.message?.contains("permission") == true || e is SecurityException) {
+                "{\"error\":\"未授权Health Connect。请在手机设置→健康→Health Connect→应用权限中授权Nudge读取心率\"}"
+            } else {
+                "{\"error\":\"\${e.message}\"}"
+            }
+        }
+    }
+
+    private fun getSleepData(): String {
+        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            return "{\"error\":\"Health Connect 需要 Android 14+\"}"
+        }
+        return try {
+            val client = androidx.health.connect.client.HealthConnectClient.getOrCreate(context)
+            val now = java.time.Instant.now()
+            val start = now.minus(java.time.Duration.ofDays(2))
+            val response = client.readRecords(
+                androidx.health.connect.client.request.ReadRecordsRequest(
+                    recordType = androidx.health.connect.client.records.SleepSessionRecord::class,
+                    timeRangeFilter = androidx.health.connect.client.time.TimeRangeFilter.between(start, now),
+                    pageSize = 10
+                )
+            )
+            val records = response.records
+            if (records.isEmpty()) return "{\"error\":\"未找到睡眠数据，请确认小米运动已同步\"}"
+            
+            val sessions = org.json.JSONArray()
+            for (r in records) {
+                val dur = java.time.Duration.between(r.startTime, r.endTime)
+                sessions.put(org.json.JSONObject().apply {
+                    put("start", r.startTime.toString())
+                    put("end", r.endTime.toString())
+                    put("duration_min", dur.toMinutes())
+                    put("duration_hours", String.format("%.1f", dur.toMinutes() / 60.0))
+                    if (r.endZoneOffset != null) put("timezone", r.endZoneOffset.toString())
+                })
+            }
+            org.json.JSONObject().apply {
+                put("sessions", sessions)
+                put("count", sessions.length())
+                if (sessions.length() > 0) {
+                    val latest = sessions.getJSONObject(sessions.length() - 1)
+                    put("latest_start", latest.optString("start"))
+                    put("latest_end", latest.optString("end"))
+                    put("latest_duration_hours", latest.optString("duration_hours"))
+                }
+            }.toString()
+        } catch (e: Exception) {
+            if (e.message?.contains("permission") == true || e is SecurityException) {
+                "{\"error\":\"未授权Health Connect。请在手机设置→健康→Health Connect→应用权限中授权Nudge读取睡眠\"}"
+            } else {
+                "{\"error\":\"\${e.message}\"}"
+            }
         }
     }
 
