@@ -251,6 +251,18 @@ class MainActivity : ComponentActivity() {
         updateUI()
         runSelfTest()
         updatePermissionUI()
+        cacheClipboard()
+    }
+
+    private fun cacheClipboard() {
+        try {
+            val cm = getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+            val clip = cm.primaryClip
+            if (clip != null && clip.itemCount > 0) {
+                val text = clip.getItemAt(0).coerceToText(this).toString()
+                getSharedPreferences("nudge", MODE_PRIVATE).edit().putString("clipboard_cache", text).apply()
+            }
+        } catch (_: Exception) {}
     }
 
     private fun isServiceRunning(): Boolean {

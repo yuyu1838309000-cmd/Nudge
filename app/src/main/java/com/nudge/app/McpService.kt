@@ -477,22 +477,26 @@ class HttpServer(private val port: Int, private val context: Context) {
             val sensor = sm.getDefaultSensor(android.hardware.Sensor.TYPE_STEP_COUNTER)
             if (sensor == null) return "{\"error\":\"无计步传感器\"}"
             val latch = java.util.concurrent.CountDownLatch(1)
-            var steps = "0"
+            var steps = 0L
+            var got = false
             val listener = object : android.hardware.SensorEventListener {
                 override fun onSensorChanged(event: android.hardware.SensorEvent?) {
-                    if (event != null && event.values.isNotEmpty()) {
-                        steps = event.values[0].toLong().toString()
+                    if (event != null && event.values.isNotEmpty() && !got) {
+                        steps = event.values[0].toLong()
+                        got = true
+                        sm.unregisterListener(this)
+                        latch.countDown()
                     }
-                    sm.unregisterListener(this)
-                    latch.countDown()
                 }
                 override fun onAccuracyChanged(sensor: android.hardware.Sensor?, accuracy: Int) {}
             }
             android.os.Handler(android.os.Looper.getMainLooper()).post {
-                sm.registerListener(listener, sensor, android.hardware.SensorManager.SENSOR_DELAY_NORMAL)
+                sm.registerListener(listener, sensor, android.hardware.SensorManager.SENSOR_DELAY_FASTEST)
             }
-            latch.await(2, java.util.concurrent.TimeUnit.SECONDS)
-            "{\"steps\":$steps}"
+            if (!latch.await(3, java.util.concurrent.TimeUnit.SECONDS)) {
+                sm.unregisterListener(listener)
+            }
+            if (got) "{\"steps\":$steps}" else "{\"steps\":0,\"note\":\"传感器未返回数据，请走几步后再试\"}"
         } catch (e: Exception) {
             "{\"error\":\"${e.message}\"}"
         }
@@ -500,6 +504,12 @@ class HttpServer(private val port: Int, private val context: Context) {
 
     private fun getClipboard(): String {
         return try {
+            // Android 10+限制后台读剪贴板，优先读缓存
+            val cached = context.getSharedPreferences("nudge", android.content.Context.MODE_PRIVATE).getString("clipboard_cache", "") ?: ""
+            if (cached.isNotEmpty()) {
+                return "{\"text\":\"${cached.replace("\"","\\\"").replace("\n"," ")}\"}"
+            }
+            // 前台服务尝试直接读
             val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
             val clip = cm.primaryClip
             if (clip == null || clip.itemCount == 0) return "{\"text\":\"\"}"
