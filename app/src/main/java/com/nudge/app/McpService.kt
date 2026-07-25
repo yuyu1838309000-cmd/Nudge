@@ -359,24 +359,8 @@ class HttpServer(private val port: Int, private val context: Context) {
                     })
                 })
                 tools.put(JSONObject().apply {
-                    put("name", "get_heart_rate")
-                    put("description", "从Health Connect获取心率数据（需小米运动/Zepp Life同步）")
-                    put("inputSchema", JSONObject().apply {
-                        put("type", "object")
-                        put("properties", JSONObject())
-                    })
-                })
-                tools.put(JSONObject().apply {
                     put("name", "switch_to_rikkahub")
                     put("description", "切换到RikkaHub前台（从任何APP回到对话）")
-                    put("inputSchema", JSONObject().apply {
-                        put("type", "object")
-                        put("properties", JSONObject())
-                    })
-                })
-                tools.put(JSONObject().apply {
-                    put("name", "get_sleep")
-                    put("description", "从Health Connect获取睡眠数据（需小米运动/Zepp Life同步）")
                     put("inputSchema", JSONObject().apply {
                         put("type", "object")
                         put("properties", JSONObject())
@@ -516,19 +500,11 @@ class HttpServer(private val port: Int, private val context: Context) {
                         val info = readScreen()
                         content.put(JSONObject().apply { put("type", "text"); put("text", info) })
                     }
-                    "get_heart_rate" -> {
-                        val info = getHeartRate()
-                        content.put(JSONObject().apply { put("type", "text"); put("text", info) })
-                    }
                     "switch_to_rikkahub" -> {
                         val svc = NudgeAccessibilityService.instance
                         val info = if (svc != null && svc.switchToRikkaHub())
                             "{\"success\":true,\"action\":\"切换到RikkaHub\"}"
                         else "{\"error\":\"切换失败，请手动切回RikkaHub\"}"
-                        content.put(JSONObject().apply { put("type", "text"); put("text", info) })
-                    }
-                    "get_sleep" -> {
-                        val info = getSleepData()
                         content.put(JSONObject().apply { put("type", "text"); put("text", info) })
                     }
                     else -> {
@@ -844,58 +820,7 @@ class HttpServer(private val port: Int, private val context: Context) {
         }
     }
 
-    private fun getHeartRate(): String {
-        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            return "{\"error\":\"Health Connect 需要 Android 14+\"}"
-        }
-        return try {
-            val client = androidx.health.connect.client.HealthConnectClient.getOrCreate(context)
-            val now = java.time.Instant.now()
-            val start = now.minus(java.time.Duration.ofDays(1))
-            val response = kotlinx.coroutines.runBlocking {
-                client.readRecords(
-                    androidx.health.connect.client.request.ReadRecordsRequest(
-                        recordType = androidx.health.connect.client.records.HeartRateRecord::class,
-                    timeRangeFilter = androidx.health.connect.client.time.TimeRangeFilter.between(start, now),
-                    pageSize = 200
-                )
-            )
-            }
-            val records = response.records
-            if (records.isEmpty()) return "{\"error\":\"未找到心率数据，请确认小米运动已同步\"}"
-            
-            val samples = org.json.JSONArray()
-            var min = Long.MAX_VALUE; var max = 0L; var sum = 0L
-            for (r in records) {
-                for (s in r.samples) {
-                    val bpm = s.beatsPerMinute
-                    samples.put(org.json.JSONObject().apply {
-                        put("bpm", bpm)
-                        put("time", s.time.toString())
-                    })
-                    if (bpm < min) min = bpm
-                    if (bpm > max) max = bpm.toLong()
-                    sum += bpm
-                }
-            }
-            org.json.JSONObject().apply {
-                put("avg", if (samples.length() > 0) sum / samples.length() else 0)
-                put("min", if (min != Long.MAX_VALUE) min else 0L)
-                put("max", max)
-                put("count", samples.length())
-                put("latest", if (samples.length() > 0) samples.getJSONObject(samples.length() - 1).optInt("bpm") else 0)
-                put("samples", samples)
-            }.toString()
-        } catch (e: Exception) {
-            if (e is SecurityException || e.message?.contains("permission") == true) {
-                "{\"error\":\"未授权Health Connect。请在 设置→隐私→运动健康 中授权Nudge\"}"
-            } else {
-                "{\"error\":\"Health Connect不可用(OS3限制): \${e.message}\"}"
-            }
-        }
-    }
-
-    private fun getSleepData(): String {
+private fun getSleepData(): String {
         if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             return "{\"error\":\"Health Connect 需要 Android 14+\"}"
         }

@@ -12,7 +12,6 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
-import android.util.Log
 import android.view.Gravity
 import android.view.View
 import android.widget.Button
@@ -75,9 +74,7 @@ class MainActivity : ComponentActivity() {
         ToolDef("tap", "点击屏幕指定坐标", "ok"),
         ToolDef("swipe", "滑动屏幕", "ok"),
         ToolDef("read_screen", "读取当前界面所有文字", "ok"),
-        ToolDef("get_heart_rate", "Health Connect心率", "wip"),
         ToolDef("switch_to_rikkahub", "切回RikkaHub对话", "ok"),
-        ToolDef("get_sleep", "Health Connect睡眠", "wip"),
     )
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -131,7 +128,6 @@ class MainActivity : ComponentActivity() {
         permAccessBtn.setOnClickListener { openAccessibilitySettings() }
         permNotifBtn.setOnClickListener { openNotificationSettings() }
 
-        initHealthConnect()
         updateUI()
         runSelfTest()
         updatePermissionUI()
@@ -205,37 +201,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun initHealthConnect() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            try {
-                val client = androidx.health.connect.client.HealthConnectClient.getOrCreate(this)
-                Log.i("Nudge", "HealthConnect client created, attempting read to register...")
-                kotlinx.coroutines.runBlocking {
-                    try {
-                        client.readRecords(
-                            androidx.health.connect.client.request.ReadRecordsRequest(
-                                recordType = androidx.health.connect.client.records.StepsRecord::class,
-                                timeRangeFilter = androidx.health.connect.client.time.TimeRangeFilter.between(
-                                    java.time.Instant.now().minus(java.time.Duration.ofHours(1)),
-                                    java.time.Instant.now()
-                                ),
-                                pageSize = 1
-                            )
-                        )
-                        Log.i("Nudge", "HealthConnect: data read OK")
-                    } catch (e: SecurityException) {
-                        Log.i("Nudge", "HealthConnect: need permission, should appear in settings now")
-                    } catch (e: Exception) {
-                        Log.i("Nudge", "HealthConnect: read attempt - ${e.message}")
-                    }
-                }
-            } catch (e: Exception) {
-                Log.w("Nudge", "HealthConnect init failed: ${e.message}")
-            }
-        }
-    }
-
-    private fun isServiceRunning(): Boolean {
+private fun isServiceRunning(): Boolean {
         val manager = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
         for (service in manager.getRunningServices(Int.MAX_VALUE)) {
             if (McpService::class.java.name == service.service.className) {
