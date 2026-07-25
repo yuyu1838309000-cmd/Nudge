@@ -33,6 +33,8 @@ class MainActivity : ComponentActivity() {
     private lateinit var testResult: TextView
     private lateinit var permUsageText: TextView
     private lateinit var permUsageBtn: Button
+    private lateinit var permAccessText: TextView
+    private lateinit var permAccessBtn: Button
     private val handler = Handler(Looper.getMainLooper())
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -117,10 +119,24 @@ class MainActivity : ComponentActivity() {
         }
         layout.addView(permUsageBtn)
 
+        permAccessText = TextView(this).apply {
+            textSize = 13f
+            gravity = Gravity.CENTER
+            setPadding(0, 16, 0, 4)
+        }
+        layout.addView(permAccessText)
+
+        permAccessBtn = Button(this).apply {
+            textSize = 14f
+            setPadding(32, 10, 32, 10)
+        }
+        layout.addView(permAccessBtn)
+
         setContentView(layout)
 
         toggleButton.setOnClickListener { toggleService() }
         permUsageBtn.setOnClickListener { openUsageAccessSettings() }
+        permAccessBtn.setOnClickListener { openAccessibilitySettings() }
         updateUI()
         runSelfTest()
         updatePermissionUI()
@@ -164,6 +180,29 @@ class MainActivity : ComponentActivity() {
             permUsageBtn.text = "去授权"
             permUsageBtn.visibility = View.VISIBLE
         }
+        if (isAccessibilityEnabled()) {
+            permAccessText.text = "✓ 无障碍服务"
+            permAccessText.setTextColor(Color.parseColor("#4CAF50"))
+            permAccessBtn.visibility = View.GONE
+        } else {
+            permAccessText.text = "✗ 无障碍服务"
+            permAccessText.setTextColor(Color.parseColor("#ff6b6b"))
+            permAccessBtn.text = "去开启"
+            permAccessBtn.visibility = View.VISIBLE
+        }
+    }
+
+    private fun isAccessibilityEnabled(): Boolean {
+        val serviceName = "$packageName/.NudgeAccessibilityService"
+        val enabledServices = Settings.Secure.getString(
+            contentResolver,
+            Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+        ) ?: return false
+        return enabledServices.contains(serviceName) || enabledServices.contains("com.nudge.app/.NudgeAccessibilityService")
+    }
+
+    private fun openAccessibilitySettings() {
+        startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
     }
 
     private fun openUsageAccessSettings() {

@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="accessibility_service_description">Nudge需要无障碍权限来检测当前前台应用，以便提供实时前台应用信息。</string>
+</resources>
