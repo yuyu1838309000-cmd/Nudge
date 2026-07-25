@@ -44,53 +44,49 @@ class NudgeAccessibilityService : AccessibilityService() {
             callback("{\"error\":\"需要Android 14+\"}")
             return
         }
-        // 确保在主线程调用takeScreenshot
         val mainHandler = android.os.Handler(android.os.Looper.getMainLooper())
         mainHandler.post {
-        try {
-            takeScreenshot(
-                0, // displayId
-                java.util.concurrent.Executors.newSingleThreadExecutor(),
-                object : TakeScreenshotCallback {
-                    override fun onSuccess(result: ScreenshotResult) {
-                        try {
-                            val bitmap = android.graphics.BitmapFactory.decodeStream(
-                                java.io.ByteArrayInputStream(result.getHardwareBuffer()?.let {
-                                    // fallback: use pixel copy
-                                    null
-                                })
-                            )
-                            // convert hardware buffer to bitmap
-                            val hb = result.hardwareBuffer
-                            if (hb != null) {
-                                val colorSpace = android.graphics.ColorSpace.get(android.graphics.ColorSpace.Named.SRGB)
-                                val bitmap2 = android.graphics.Bitmap.wrapHardwareBuffer(hb, colorSpace)
-                                if (bitmap2 != null) {
-                                    val stream = java.io.ByteArrayOutputStream()
-                                    bitmap2.compress(android.graphics.Bitmap.CompressFormat.JPEG, 70, stream)
-                                    val base64 = android.util.Base64.encodeToString(stream.toByteArray(), android.util.Base64.NO_WRAP)
-                                    result.hardwareBuffer.close()
-                                    callback(base64)
+            try {
+                takeScreenshot(
+                    0,
+                    java.util.concurrent.Executors.newSingleThreadExecutor(),
+                    object : TakeScreenshotCallback {
+                        override fun onSuccess(result: ScreenshotResult) {
+                            try {
+                                val hb = result.hardwareBuffer
+                                if (hb == null) {
+                                    callback("{\"error\":\"hardwareBuffer为null\"}")
                                     return
                                 }
+                                val cs = android.graphics.ColorSpace.get(android.graphics.ColorSpace.Named.SRGB)
+                                val bmp = android.graphics.Bitmap.wrapHardwareBuffer(hb, cs)
+                                if (bmp == null) {
+                                    hb.close()
+                                    callback("{\"error\":\"wrapHardwareBuffer返回null\"}")
+                                    return
+                                }
+                                val stream = java.io.ByteArrayOutputStream()
+                                bmp.compress(android.graphics.Bitmap.CompressFormat.JPEG, 70, stream)
+                                val bytes = stream.toByteArray()
+                                if (bytes.isEmpty()) {
+                                    callback("{\"error\":\"压缩后数据为空\"}")
+                                    return
+                                }
+                                val base64 = android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
+                                callback(base64)
                                 hb.close()
+                            } catch (e: Exception) {
+                                callback("{\"error\":\"${e.message}\"}")
                             }
-                            callback("{\"error\":\"截屏转换失败\"}")
-                        } catch (e: Exception) {
-                            callback("{\"error\":\"${e.message}\"}")
-                        } finally {
-                            result.hardwareBuffer?.close()
+                        }
+                        override fun onFailure(errorCode: Int) {
+                            callback("{\"error\":\"截屏失败，错误码: $errorCode\"}")
                         }
                     }
-
-                    override fun onFailure(errorCode: Int) {
-                        callback("{\"error\":\"截屏失败，错误码: $errorCode\"}")
-                    }
-                }
-            )
-        } catch (e: Exception) {
-            callback("{\"error\":\"${e.message}\"}")
+                )
+            } catch (e: Exception) {
+                callback("{\"error\":\"${e.message}\"}")
+            }
         }
-        } // mainHandler.post
     }
 }
