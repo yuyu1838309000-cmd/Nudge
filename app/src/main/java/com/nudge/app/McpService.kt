@@ -9,6 +9,8 @@ import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import java.io.*
+import org.json.JSONObject
+import org.json.JSONArray
 
 class McpService : Service() {
 
@@ -116,11 +118,73 @@ class HttpServer(private val port: Int) {
         } catch (_: Exception) {}
     }
 
-    private fun route(method: String, path: String, body: String): Pair<String, String> {
-        return when {
-            path == "/ping" -> "200 OK" to "{\"result\":\"pong\"}"
-            path == "/tools/list" -> "200 OK" to "{\"tools\":[{\"name\":\"ping\",\"description\":\"test\"}]}"
-            else -> "200 OK" to "{\"result\":\"Nudge MCP v0.1.0\"}"
+    private fun route(httpMethod: String, path: String, body: String): Pair<String, String> {
+        if (path == "/ping") return "200 OK" to "{\"result\":\"pong\"}"
+
+        if (body.isNotBlank()) {
+            try {
+                val req = JSONObject(body)
+                val rpcMethod = req.optString("method", "")
+                val id = if (req.has("id")) req.get("id") else null
+
+                if (rpcMethod.isNotEmpty()) {
+                    val result = handleJsonRpc(rpcMethod, req.optJSONObject("params") ?: JSONObject())
+                    if (id == null) return "202 Accepted" to ""
+                    val resp = JSONObject()
+                    resp.put("jsonrpc", "2.0")
+                    resp.put("id", id)
+                    resp.put("result", result)
+                    return "200 OK" to resp.toString()
+                }
+            } catch (_: Exception) {}
+        }
+
+        return "200 OK" to "{\"result\":\"Nudge MCP v0.1.0\"}"
+    }
+
+    private fun handleJsonRpc(method: String, params: JSONObject): JSONObject {
+        return when (method) {
+            "initialize" -> {
+                val caps = JSONObject()
+                caps.put("tools", JSONObject())
+                val serverInfo = JSONObject()
+                serverInfo.put("name", "Nudge")
+                serverInfo.put("version", "0.1.0")
+                JSONObject().apply {
+                    put("protocolVersion", "2024-11-05")
+                    put("capabilities", caps)
+                    put("serverInfo", serverInfo)
+                }
+            }
+            "tools/list" -> {
+                val tools = JSONArray()
+                tools.put(JSONObject().apply {
+                    put("name", "ping")
+                    put("description", "测试连通性，返回pong")
+                    put("inputSchema", JSONObject().apply {
+                        put("type", "object")
+                        put("properties", JSONObject())
+                    })
+                })
+                JSONObject().apply { put("tools", tools) }
+            }
+            "tools/call" -> {
+                val toolName = params.optString("name", "")
+                val content = JSONArray()
+                if (toolName == "ping") {
+                    content.put(JSONObject().apply {
+                        put("type", "text")
+                        put("text", "pong")
+                    })
+                } else {
+                    content.put(JSONObject().apply {
+                        put("type", "text")
+                        put("text", "未知工具: $toolName")
+                    })
+                }
+                JSONObject().apply { put("content", content) }
+            }
+            else -> JSONObject()
         }
     }
 }
