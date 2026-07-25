@@ -279,6 +279,7 @@ class HttpServer(private val port: Int, private val context: Context) {
             val apiKey = prefs.getString("api_key", "") ?: ""
             val model = prefs.getString("model", "Qwen/Qwen3.6-35B-A3B") ?: "Qwen/Qwen3.6-35B-A3B"
             val apiUrl = prefs.getString("api_url", "https://api.siliconflow.cn/v1/chat/completions") ?: "https://api.siliconflow.cn/v1/chat/completions"
+            val prompt = prefs.getString("prompt", "如实描述这个手机屏幕截图的内容，语气自然口语化，简洁直接。看到啥说啥，不加多余评价。不超过100字。") ?: "如实描述"
             if (apiKey.isEmpty()) return "{\"error\":\"请先配置API Key\"}"
 
             val client = okhttp3.OkHttpClient.Builder()
@@ -300,7 +301,7 @@ class HttpServer(private val port: Int, private val context: Context) {
             })
             msgContent.put(JSONObject().apply {
                 put("type", "text")
-                put("text", "用简短的中文描述这个手机屏幕截图上的内容，包括正在运行的应用和主要显示的信息。不超过100字。")
+                put("text", prompt)
             })
             msg.put("content", msgContent)
             messages.put(msg)

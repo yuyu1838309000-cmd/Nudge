@@ -177,6 +177,17 @@ class MainActivity : ComponentActivity() {
         }
         layout.addView(urlInput)
 
+        val promptInput = android.widget.EditText(this).apply {
+            hint = "分析Prompt"
+            setHintTextColor(Color.parseColor("#555555"))
+            setTextColor(Color.WHITE)
+            textSize = 13f
+            gravity = Gravity.CENTER
+            setPadding(16, 10, 16, 10)
+            setBackgroundColor(Color.parseColor("#2a2a3e"))
+        }
+        layout.addView(promptInput)
+
         val apiSaveBtn = Button(this).apply {
             text = "保存配置"
             textSize = 14f
@@ -197,12 +208,14 @@ class MainActivity : ComponentActivity() {
         apiKeyInput.setText(prefs.getString("api_key", ""))
         modelInput.setText(prefs.getString("model", "Qwen/Qwen3.6-35B-A3B"))
         urlInput.setText(prefs.getString("api_url", "https://api.siliconflow.cn/v1/chat/completions"))
+        promptInput.setText(prefs.getString("prompt", "如实描述这个手机屏幕截图的内容，语气自然口语化，简洁直接。看到啥说啥，不加多余评价。不超过100字。"))
 
         apiSaveBtn.setOnClickListener {
             prefs.edit()
                 .putString("api_key", apiKeyInput.text.toString().trim())
                 .putString("model", modelInput.text.toString().trim())
                 .putString("api_url", urlInput.text.toString().trim())
+                .putString("prompt", promptInput.text.toString().trim())
                 .apply()
             apiStatus.text = "已保存"
             apiStatus.postDelayed({ apiStatus.text = "" }, 2000)
