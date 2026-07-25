@@ -228,6 +228,19 @@ class HttpServer(private val port: Int, private val context: Context) {
                         put("properties", JSONObject())
                     })
                 })
+                tools.put(JSONObject().apply {
+                    put("name", "get_notifications")
+                    put("description", "获取最近收到的通知列表（需开启通知监听权限）")
+                    put("inputSchema", JSONObject().apply {
+                        put("type", "object")
+                        put("properties", JSONObject().apply {
+                            put("count", JSONObject().apply {
+                                put("type", "integer")
+                                put("description", "返回数量，默认10")
+                            })
+                        })
+                    })
+                })
                 JSONObject().apply { put("tools", tools) }
             }
             "tools/call" -> {
@@ -270,6 +283,14 @@ class HttpServer(private val port: Int, private val context: Context) {
                     }
                     "get_location" -> {
                         val info = getLocation()
+                        content.put(JSONObject().apply {
+                            put("type", "text")
+                            put("text", info)
+                        })
+                    }
+                    "get_notifications" -> {
+                        val count = params.optInt("count", 10)
+                        val info = getNotifications(count)
                         content.put(JSONObject().apply {
                             put("type", "text")
                             put("text", info)
@@ -397,6 +418,18 @@ class HttpServer(private val port: Int, private val context: Context) {
         } catch (e: Exception) {
             "{\"error\":\"${e.message}\"}"
         }
+    }
+
+    private fun getNotifications(count: Int): String {
+        if (!NudgeNotificationService.isRunning) {
+            return "{\"error\":\"通知监听服务未开启，请在系统设置→通知使用权中开启Nudge\"}"
+        }
+        val list = NudgeNotificationService.lastNotifications.take(count)
+        val arr = JSONArray()
+        for (item in list) {
+            try { arr.put(JSONObject(item)) } catch (_: Exception) {}
+        }
+        return JSONObject().apply { put("notifications", arr); put("count", arr.length()) }.toString()
     }
 
     private fun getLocation(): String {

@@ -35,6 +35,8 @@ class MainActivity : ComponentActivity() {
     private lateinit var permUsageBtn: Button
     private lateinit var permAccessText: TextView
     private lateinit var permAccessBtn: Button
+    private lateinit var permNotifText: TextView
+    private lateinit var permNotifBtn: Button
     private val handler = Handler(Looper.getMainLooper())
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -132,6 +134,18 @@ class MainActivity : ComponentActivity() {
         }
         layout.addView(permAccessBtn)
 
+        permNotifText = TextView(this).apply {
+            textSize = 13f
+            gravity = Gravity.CENTER
+            setPadding(0, 16, 0, 4)
+        }
+        layout.addView(permNotifText)
+        permNotifBtn = Button(this).apply {
+            textSize = 14f
+            setPadding(32, 10, 32, 10)
+        }
+        layout.addView(permNotifBtn)
+
         // API配置区
         val apiLabel = TextView(this).apply {
             text = "视觉模型配置"
@@ -226,6 +240,7 @@ class MainActivity : ComponentActivity() {
         toggleButton.setOnClickListener { toggleService() }
         permUsageBtn.setOnClickListener { openUsageAccessSettings() }
         permAccessBtn.setOnClickListener { openAccessibilitySettings() }
+        permNotifBtn.setOnClickListener { openNotificationSettings() }
         updateUI()
         runSelfTest()
         updatePermissionUI()
@@ -279,6 +294,16 @@ class MainActivity : ComponentActivity() {
             permAccessBtn.text = "去开启"
             permAccessBtn.visibility = View.VISIBLE
         }
+        if (NudgeNotificationService.isRunning) {
+            permNotifText.text = "✓ 通知监听"
+            permNotifText.setTextColor(Color.parseColor("#4CAF50"))
+            permNotifBtn.visibility = View.GONE
+        } else {
+            permNotifText.text = "✗ 通知监听"
+            permNotifText.setTextColor(Color.parseColor("#ff6b6b"))
+            permNotifBtn.text = "去开启"
+            permNotifBtn.visibility = View.VISIBLE
+        }
     }
 
     private fun isAccessibilityEnabled(): Boolean {
@@ -294,6 +319,10 @@ class MainActivity : ComponentActivity() {
 
     private fun openAccessibilitySettings() {
         startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+    }
+
+    private fun openNotificationSettings() {
+        startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
     }
 
     private fun hasLocationPermission(): Boolean {
