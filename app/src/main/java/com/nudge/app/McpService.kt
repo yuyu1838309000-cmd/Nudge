@@ -14,6 +14,7 @@ import androidx.core.app.NotificationCompat
 import java.io.*
 import org.json.JSONObject
 import org.json.JSONArray
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
 
 class McpService : Service() {
 
@@ -195,6 +196,14 @@ class HttpServer(private val port: Int, private val context: Context) {
                         put("properties", JSONObject())
                     })
                 })
+                tools.put(JSONObject().apply {
+                    put("name", "screenshot_analyze")
+                    put("description", "截取当前屏幕并用AI分析内容，返回文字描述")
+                    put("inputSchema", JSONObject().apply {
+                        put("type", "object")
+                        put("properties", JSONObject())
+                    })
+                })
                 JSONObject().apply { put("tools", tools) }
             }
             "tools/call" -> {
@@ -209,6 +218,13 @@ class HttpServer(private val port: Int, private val context: Context) {
                     }
                     "get_foreground_app" -> {
                         val info = getForegroundApp()
+                        content.put(JSONObject().apply {
+                            put("type", "text")
+                            put("text", info)
+                        })
+                    }
+                    "screenshot_analyze" -> {
+                        val info = screenshotAndAnalyze()
                         content.put(JSONObject().apply {
                             put("type", "text")
                             put("text", info)
@@ -234,5 +250,80 @@ class HttpServer(private val port: Int, private val context: Context) {
         }
         val name = NudgeAccessibilityService.currentAppName
         return "{\"package\":\"$pkg\",\"app_name\":\"$name\"}"
+    }
+
+    private fun screenshotAndAnalyze(): String {
+        val latch = java.util.concurrent.CountDownLatch(1)
+        var result = ""
+        try {
+            // 需要从主线程获取NudgeAccessibilityService实例
+            val service = NudgeAccessibilityService.instance ?: return "{\"error\":\"无障碍服务未运行\"}"
+            service.takeScreenshotAndAnalyze { base64 ->
+                if (base64.startsWith("{\"error\"")) {
+                    result = base64
+                } else {
+                    result = analyzeWithAI(base64)
+                }
+                latch.countDown()
+            }
+            latch.await(15, java.util.concurrent.TimeUnit.SECONDS)
+            return result.ifEmpty { "{\"error\":\"超时\"}" }
+        } catch (e: Exception) {
+            return "{\"error\":\"${e.message}\"}"
+        }
+    }
+
+    private fun analyzeWithAI(base64: String): String {
+        try {
+            val client = okhttp3.OkHttpClient.Builder()
+                .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+                .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+                .build()
+            
+            val payload = JSONObject()
+            payload.put("model", "Qwen/Qwen2-VL-72B-Instruct")
+            val messages = JSONArray()
+            val msg = JSONObject()
+            msg.put("role", "user")
+            val msgContent = JSONArray()
+            msgContent.put(JSONObject().apply {
+                put("type", "image_url")
+                put("image_url", JSONObject().apply {
+                    put("url", "data:image/jpeg;base64,$base64")
+                })
+            })
+            msgContent.put(JSONObject().apply {
+                put("type", "text")
+                put("text", "用简短的中文描述这个手机屏幕截图上的内容，包括正在运行的应用和主要显示的信息。不超过100字。")
+            })
+            msg.put("content", msgContent)
+            messages.put(msg)
+            payload.put("messages", messages)
+            payload.put("max_tokens", 200)
+
+            val body = okhttp3.RequestBody.create(
+                "application/json".toMediaTypeOrNull(),
+                payload.toString()
+            )
+            val request = okhttp3.Request.Builder()
+                .url("https://api.siliconflow.cn/v1/chat/completions")
+                .header("Authorization", "Bearer sk-yqrhldngerusgndhjqbaqvqbossnfatgpyorepnxdjhtkmtf")
+                .post(body)
+                .build()
+
+            val response = client.newCall(request).execute()
+            val respBody = response.body?.string() ?: "{}"
+            val respJson = JSONObject(respBody)
+            val choices = respJson.optJSONArray("choices")
+            if (choices != null && choices.length() > 0) {
+                val choice = choices.getJSONObject(0)
+                val message = choice.optJSONObject("message")
+                val text = message?.optString("content", "") ?: ""
+                return "{\"description\":\"${text.replace("\"", "\\\"").replace("\n", " ")}\"}"
+            }
+            return "{\"error\":\"AI返回异常: $respBody\"}"
+        } catch (e: Exception) {
+            return "{\"error\":\"AI分析失败: ${e.message}\"}"
+        }
     }
 }
