@@ -342,6 +342,22 @@ class HttpServer(private val port: Int, private val context: Context) {
                         put("required", JSONArray().put("x1").put("y1").put("x2").put("y2"))
                     })
                 })
+                tools.put(JSONObject().apply {
+                    put("name", "wake_up")
+                    put("description", "亮屏唤醒（不解锁，仅点亮屏幕）")
+                    put("inputSchema", JSONObject().apply {
+                        put("type", "object")
+                        put("properties", JSONObject())
+                    })
+                })
+                tools.put(JSONObject().apply {
+                    put("name", "read_screen")
+                    put("description", "读取当前界面所有可见文字，返回结构化列表")
+                    put("inputSchema", JSONObject().apply {
+                        put("type", "object")
+                        put("properties", JSONObject())
+                    })
+                })
                 JSONObject().apply { put("tools", tools) }
             }
             "tools/call" -> {
@@ -461,6 +477,14 @@ class HttpServer(private val port: Int, private val context: Context) {
                         val x2 = args.optDouble("x2", 0.0).toFloat()
                         val y2 = args.optDouble("y2", 0.0).toFloat()
                         val info = doSwipe(x1, y1, x2, y2)
+                        content.put(JSONObject().apply { put("type", "text"); put("text", info) })
+                    }
+                    "wake_up" -> {
+                        val info = wakeUp()
+                        content.put(JSONObject().apply { put("type", "text"); put("text", info) })
+                    }
+                    "read_screen" -> {
+                        val info = readScreen()
                         content.put(JSONObject().apply { put("type", "text"); put("text", info) })
                     }
                     else -> {
@@ -749,6 +773,30 @@ class HttpServer(private val port: Int, private val context: Context) {
             }
         } catch (e: Exception) {
             "{\"error\":\"${e.message}\"}"
+        }
+    }
+
+    private fun wakeUp(): String {
+        return try {
+            val pm = context.getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
+            val wl = pm.newWakeLock(
+                android.os.PowerManager.SCREEN_BRIGHT_WAKE_LOCK or android.os.PowerManager.ACQUIRE_CAUSES_WAKEUP,
+                "nudge:wake"
+            )
+            wl.acquire(500)
+            wl.release()
+            "{\"success\":true,\"action\":\"唤醒屏幕\"}"
+        } catch (e: Exception) {
+            "{\"error\":\"\${e.message}\"}"
+        }
+    }
+
+    private fun readScreen(): String {
+        val service = NudgeAccessibilityService.instance ?: return "{\"error\":\"无障碍服务未运行\"}"
+        return try {
+            service.readScreen()
+        } catch (e: Exception) {
+            "{\"error\":\"\${e.message}\"}"
         }
     }
 

@@ -54,6 +54,7 @@ class MainActivity : ComponentActivity() {
 
     private val tools = listOf(
         ToolDef("ping", "测试连通性", "ok"),
+        ToolDef("wake_up", "亮屏唤醒", "ok"),
         ToolDef("get_foreground_app", "获取前台应用包名和名称", "ok"),
         ToolDef("screenshot_analyze", "截屏并用AI分析内容", "ok"),
         ToolDef("sensor_data", "加速度/光线/陀螺仪等传感器", "ok"),
@@ -72,6 +73,7 @@ class MainActivity : ComponentActivity() {
         ToolDef("open_app", "打开指定应用", "ok"),
         ToolDef("tap", "点击屏幕指定坐标", "wip"),
         ToolDef("swipe", "滑动屏幕", "wip"),
+        ToolDef("read_screen", "读取当前界面所有文字", "ok"),
     )
 
     override fun onCreate(savedInstanceState: Bundle?) {

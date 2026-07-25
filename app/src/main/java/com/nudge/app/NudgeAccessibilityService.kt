@@ -136,4 +136,33 @@ class NudgeAccessibilityService : AccessibilityService() {
         }
         dispatchGesture(builder.build(), cb, null)
     }
+
+    fun readScreen(): String {
+        val root = rootInActiveWindow ?: return """{"error":"无法获取屏幕内容，请确认无障碍服务已开启"}"""
+        val texts = mutableListOf<String>()
+        try {
+            collectTexts(root, texts)
+        } finally {
+            root.recycle()
+        }
+        val arr = org.json.JSONArray()
+        for (t in texts) arr.put(t)
+        return org.json.JSONObject().apply {
+            put("elements", arr)
+            put("count", arr.length())
+        }.toString()
+    }
+
+    private fun collectTexts(node: android.view.accessibility.AccessibilityNodeInfo, collector: MutableList<String>) {
+        val text = node.text?.toString()?.trim()
+        val desc = node.contentDescription?.toString()?.trim()
+        if (!text.isNullOrEmpty()) collector.add(text)
+        if (!desc.isNullOrEmpty() && desc != text) collector.add(desc)
+        for (i in 0 until node.childCount) {
+            val child = node.getChild(i) ?: continue
+            collectTexts(child, collector)
+            child.recycle()
+        }
+    }
+
 }
