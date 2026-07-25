@@ -1,2 +1,15 @@
-# Nudge
-小鱼APP。内置MCP Server的Android应用，127.0.0.1直连RikkaHub。拱鱼。
+# Nudge 🐷
+
+小鱼APP。内置MCP Server的Android应用。
+
+小猪拱小鱼。
+
+## 架构
+RikkaHub ←127.0.0.1→ Nudge APP → 数据采集 + 命令执行
+
+## 开发阶段
+- [ ] 阶段零：最小可验证版
+- [ ] 阶段一：数据采集
+- [ ] 阶段二：命令执行
+- [ ] 阶段三：媒体控制
+- [ ] 阶段四：扩展
