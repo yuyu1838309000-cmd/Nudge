@@ -472,34 +472,8 @@ class HttpServer(private val port: Int, private val context: Context) {
     }
 
     private fun getSteps(): String {
-        return try {
-            val sm = context.getSystemService(Context.SENSOR_SERVICE) as android.hardware.SensorManager
-            val sensor = sm.getDefaultSensor(android.hardware.Sensor.TYPE_STEP_COUNTER)
-            if (sensor == null) return "{\"error\":\"无计步传感器\"}"
-            val latch = java.util.concurrent.CountDownLatch(1)
-            var steps = 0L
-            var got = false
-            val listener = object : android.hardware.SensorEventListener {
-                override fun onSensorChanged(event: android.hardware.SensorEvent?) {
-                    if (event != null && event.values.isNotEmpty() && !got) {
-                        steps = event.values[0].toLong()
-                        got = true
-                        sm.unregisterListener(this)
-                        latch.countDown()
-                    }
-                }
-                override fun onAccuracyChanged(sensor: android.hardware.Sensor?, accuracy: Int) {}
-            }
-            android.os.Handler(android.os.Looper.getMainLooper()).post {
-                sm.registerListener(listener, sensor, android.hardware.SensorManager.SENSOR_DELAY_FASTEST)
-            }
-            if (!latch.await(3, java.util.concurrent.TimeUnit.SECONDS)) {
-                sm.unregisterListener(listener)
-            }
-            if (got) "{\"steps\":$steps}" else "{\"steps\":0,\"note\":\"传感器未返回数据，请走几步后再试\"}"
-        } catch (e: Exception) {
-            "{\"error\":\"${e.message}\"}"
-        }
+        val s = NudgeAccessibilityService.steps
+        return if (s > 0) "{\"steps\":$s}" else "{\"steps\":0,\"note\":\"传感器未激活，请走几步后再试\"}"
     }
 
     private fun getClipboard(): String {

@@ -10,17 +10,37 @@ class NudgeAccessibilityService : AccessibilityService() {
         var currentAppName: String = ""
         var isRunning: Boolean = false
         var instance: NudgeAccessibilityService? = null
+        var steps: Long = 0
     }
 
     override fun onServiceConnected() {
         super.onServiceConnected()
         isRunning = true
         instance = this
+        startStepCounter()
     }
 
     override fun onDestroy() {
         super.onDestroy()
         isRunning = false
+        stepSensorManager?.unregisterListener(stepListener)
+    }
+
+    private var stepSensorManager: android.hardware.SensorManager? = null
+    private var stepListener: android.hardware.SensorEventListener? = null
+
+    private fun startStepCounter() {
+        stepSensorManager = getSystemService(SENSOR_SERVICE) as android.hardware.SensorManager
+        val sensor = stepSensorManager?.getDefaultSensor(android.hardware.Sensor.TYPE_STEP_COUNTER) ?: return
+        stepListener = object : android.hardware.SensorEventListener {
+            override fun onSensorChanged(event: android.hardware.SensorEvent?) {
+                if (event != null && event.values.isNotEmpty()) {
+                    steps = event.values[0].toLong()
+                }
+            }
+            override fun onAccuracyChanged(sensor: android.hardware.Sensor?, accuracy: Int) {}
+        }
+        stepSensorManager?.registerListener(stepListener, sensor, android.hardware.SensorManager.SENSOR_DELAY_NORMAL)
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
