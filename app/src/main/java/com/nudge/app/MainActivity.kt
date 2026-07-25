@@ -207,10 +207,29 @@ class MainActivity : ComponentActivity() {
     private fun initHealthConnect() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             try {
-                androidx.health.connect.client.HealthConnectClient.getOrCreate(this)
-                Log.i("Nudge", "HealthConnect initialized")
+                val client = androidx.health.connect.client.HealthConnectClient.getOrCreate(this)
+                Log.i("Nudge", "HealthConnect client created, attempting read to register...")
+                kotlinx.coroutines.runBlocking {
+                    try {
+                        client.readRecords(
+                            androidx.health.connect.client.request.ReadRecordsRequest(
+                                recordType = androidx.health.connect.client.records.StepsRecord::class,
+                                timeRangeFilter = androidx.health.connect.client.time.TimeRangeFilter.between(
+                                    java.time.Instant.now().minus(java.time.Duration.ofHours(1)),
+                                    java.time.Instant.now()
+                                ),
+                                pageSize = 1
+                            )
+                        )
+                        Log.i("Nudge", "HealthConnect: data read OK")
+                    } catch (e: SecurityException) {
+                        Log.i("Nudge", "HealthConnect: need permission, should appear in settings now")
+                    } catch (e: Exception) {
+                        Log.i("Nudge", "HealthConnect: read attempt - ${e.message}")
+                    }
+                }
             } catch (e: Exception) {
-                Log.w("Nudge", "HealthConnect init skipped: ${e.message}")
+                Log.w("Nudge", "HealthConnect init failed: ${e.message}")
             }
         }
     }
