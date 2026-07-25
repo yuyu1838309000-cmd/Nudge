@@ -832,18 +832,20 @@ class HttpServer(private val port: Int, private val context: Context) {
             val client = androidx.health.connect.client.HealthConnectClient.getOrCreate(context)
             val now = java.time.Instant.now()
             val start = now.minus(java.time.Duration.ofDays(1))
-            val response = client.readRecords(
-                androidx.health.connect.client.request.ReadRecordsRequest(
-                    recordType = androidx.health.connect.client.records.HeartRateRecord::class,
+            val response = kotlinx.coroutines.runBlocking {
+                client.readRecords(
+                    androidx.health.connect.client.request.ReadRecordsRequest(
+                        recordType = androidx.health.connect.client.records.HeartRateRecord::class,
                     timeRangeFilter = androidx.health.connect.client.time.TimeRangeFilter.between(start, now),
                     pageSize = 200
                 )
             )
+            }
             val records = response.records
             if (records.isEmpty()) return "{\"error\":\"未找到心率数据，请确认小米运动已同步\"}"
             
             val samples = org.json.JSONArray()
-            var min = Int.MAX_VALUE; var max = 0; var sum = 0L
+            var min = Long.MAX_VALUE; var max = 0L; var sum = 0L
             for (r in records) {
                 for (s in r.samples) {
                     val bpm = s.beatsPerMinute
@@ -852,13 +854,13 @@ class HttpServer(private val port: Int, private val context: Context) {
                         put("time", s.time.toString())
                     })
                     if (bpm < min) min = bpm
-                    if (bpm > max) max = bpm
+                    if (bpm > max) max = bpm.toLong()
                     sum += bpm
                 }
             }
             org.json.JSONObject().apply {
                 put("avg", if (samples.length() > 0) sum / samples.length() else 0)
-                put("min", if (min != Int.MAX_VALUE) min else 0)
+                put("min", if (min != Long.MAX_VALUE) min else 0L)
                 put("max", max)
                 put("count", samples.length())
                 put("latest", if (samples.length() > 0) samples.getJSONObject(samples.length() - 1).optInt("bpm") else 0)
@@ -881,13 +883,15 @@ class HttpServer(private val port: Int, private val context: Context) {
             val client = androidx.health.connect.client.HealthConnectClient.getOrCreate(context)
             val now = java.time.Instant.now()
             val start = now.minus(java.time.Duration.ofDays(2))
-            val response = client.readRecords(
-                androidx.health.connect.client.request.ReadRecordsRequest(
-                    recordType = androidx.health.connect.client.records.SleepSessionRecord::class,
+            val response = kotlinx.coroutines.runBlocking {
+                client.readRecords(
+                    androidx.health.connect.client.request.ReadRecordsRequest(
+                        recordType = androidx.health.connect.client.records.SleepSessionRecord::class,
                     timeRangeFilter = androidx.health.connect.client.time.TimeRangeFilter.between(start, now),
                     pageSize = 10
                 )
             )
+            }
             val records = response.records
             if (records.isEmpty()) return "{\"error\":\"未找到睡眠数据，请确认小米运动已同步\"}"
             
