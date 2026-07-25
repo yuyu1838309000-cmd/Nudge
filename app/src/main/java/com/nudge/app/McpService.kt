@@ -478,23 +478,23 @@ class HttpServer(private val port: Int, private val context: Context) {
                     }
                     "open_app" -> {
                         val pkg = args.optString("package", "")
-                        var info = openApp(pkg)
-                        if (info.contains("error")) {
-                            val appName = try {
-                                val ai = context.packageManager.getApplicationInfo(pkg, 0)
-                                context.packageManager.getApplicationLabel(ai).toString()
-                            } catch (_: Exception) { "" }
-                            if (appName.isNotEmpty()) {
-                                val svc = NudgeAccessibilityService.instance
-                                if (svc != null) {
-                                    val ok = svc.findAndClickApp(appName)
-                                    if (ok) {
-                                        info = "{\"success\":true,\"package\":\"$pkg\",\"method\":\"accessibility\"}"
-                                    }
-                                }
+                        val appName = try {
+                            val ai = context.packageManager.getApplicationInfo(pkg, 0)
+                            context.packageManager.getApplicationLabel(ai).toString()
+                        } catch (_: Exception) { "" }
+                        if (appName.isEmpty()) {
+                            content.put(JSONObject().apply { put("type", "text"); put("text", "{\"error\":\"未找到应用: $pkg\"}") })
+                        } else {
+                            val svc = NudgeAccessibilityService.instance
+                            if (svc == null) {
+                                content.put(JSONObject().apply { put("type", "text"); put("text", "{\"error\":\"无障碍服务未运行\"}") })
+                            } else {
+                                val ok = svc.findAndClickApp(appName)
+                                val info = if (ok) "{\"success\":true,\"package\":\"$pkg\",\"app_name\":\"$appName\"}"
+                                          else "{\"error\":\"桌面未找到: $appName\"}"
+                                content.put(JSONObject().apply { put("type", "text"); put("text", info) })
                             }
                         }
-                        content.put(JSONObject().apply { put("type", "text"); put("text", info) })
                     }
                     "tap" -> {
                         val x = args.optDouble("x", 0.0).toFloat()

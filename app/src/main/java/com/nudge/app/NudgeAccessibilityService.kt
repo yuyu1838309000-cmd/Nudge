@@ -174,37 +174,54 @@ class NudgeAccessibilityService : AccessibilityService() {
 
     fun findAndClickApp(appName: String): Boolean {
         performGlobalAction(GLOBAL_ACTION_HOME)
-        Thread.sleep(600)
-        val root = rootInActiveWindow ?: return false
-        try {
-            val nodes = root.findAccessibilityNodeInfosByText(appName)
-            for (node in nodes) {
-                try {
-                    if (node.isClickable) {
-                        node.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK)
-                        return true
-                    }
-                    var p = node.parent
-                    var depth = 0
-                    while (p != null && depth < 5) {
-                        if (p.isClickable) {
-                            p.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK)
-                            p.recycle()
+        Thread.sleep(700)
+        // Try up to 3 pages
+        for (page in 0 until 3) {
+            val root = rootInActiveWindow ?: continue
+            try {
+                val nodes = root.findAccessibilityNodeInfosByText(appName)
+                for (node in nodes) {
+                    try {
+                        if (node.isClickable) {
+                            node.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK)
                             return true
                         }
-                        val next = p.parent
-                        p.recycle()
-                        p = next
-                        depth++
+                        var p = node.parent
+                        var depth = 0
+                        while (p != null && depth < 5) {
+                            if (p.isClickable) {
+                                p.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK)
+                                p.recycle()
+                                return true
+                            }
+                            val next = p.parent
+                            p.recycle()
+                            p = next
+                            depth++
+                        }
+                    } finally {
+                        try { node.recycle() } catch (_: Exception) {}
                     }
-                } finally {
-                    try { node.recycle() } catch (_: Exception) {}
                 }
+            } finally {
+                try { root.recycle() } catch (_: Exception) {}
             }
-            return false
-        } finally {
-            try { root.recycle() } catch (_: Exception) {}
+            // Swipe left to next page
+            val path = android.graphics.Path()
+            path.moveTo(900f, 1000f)
+            path.lineTo(200f, 1000f)
+            val stroke = android.accessibilityservice.GestureDescription.StrokeDescription(path, 0, 300)
+            val builder = android.accessibilityservice.GestureDescription.Builder()
+            builder.addStroke(stroke)
+            val latch = java.util.concurrent.CountDownLatch(1)
+            dispatchGesture(builder.build(), object : GestureResultCallback() {
+                override fun onCompleted(gd: android.accessibilityservice.GestureDescription?) { latch.countDown() }
+                override fun onCancelled(gd: android.accessibilityservice.GestureDescription?) { latch.countDown() }
+            }, null)
+            latch.await(300, java.util.concurrent.TimeUnit.MILLISECONDS)
+            Thread.sleep(400)
         }
+        return false
     }
 
 }
