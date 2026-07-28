@@ -6,6 +6,16 @@ import android.view.accessibility.AccessibilityEvent
 class NudgeAccessibilityService : AccessibilityService() {
 
     companion object {
+        val IGNORED_PACKAGES = setOf(
+            "com.android.systemui",
+            "com.miui.home",
+            "com.sohu.inputmethod.sogou",
+            "com.baidu.input",
+            "com.iflytek.inputmethod",
+            "com.google.android.inputmethod.latin",
+            "com.miui.notes",
+            "com.android.settings",
+        )
         var currentPackage: String = ""
         var currentAppName: String = ""
         var isRunning: Boolean = false
@@ -46,6 +56,7 @@ class NudgeAccessibilityService : AccessibilityService() {
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (event?.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
             val pkg = event.packageName?.toString() ?: return
+            if (pkg in Companion.IGNORED_PACKAGES) return
             currentPackage = pkg
             currentAppName = try {
                 packageManager.getApplicationLabel(
