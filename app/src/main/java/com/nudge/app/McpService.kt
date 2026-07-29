@@ -533,19 +533,24 @@ class HttpServer(private val port: Int, private val context: Context) {
         val latch = java.util.concurrent.CountDownLatch(1)
         var result = ""
         try {
-            // 需要从主线程获取NudgeAccessibilityService实例
-            val service = NudgeAccessibilityService.instance ?: return "{\"error\":\"无障碍服务未运行\"}"
+            val service = NudgeAccessibilityService.instance ?: return "{\"error\":\"无障碍服务未运行，请在系统设置中开启Nudge无障碍权限\"}"
+            Log.i("Nudge", "screenshotAndAnalyze: requesting screenshot...")
             service.takeScreenshotAndAnalyze { base64 ->
                 if (base64.startsWith("{\"error\"")) {
+                    Log.w("Nudge", "screenshotAndAnalyze: screenshot failed: $base64")
                     result = base64
                 } else {
+                    Log.i("Nudge", "screenshotAndAnalyze: screenshot ok, size=${base64.length}, calling AI...")
                     result = analyzeWithAI(base64)
+                    Log.i("Nudge", "screenshotAndAnalyze: AI result=$result")
                 }
                 latch.countDown()
             }
-            latch.await(15, java.util.concurrent.TimeUnit.SECONDS)
-            return result.ifEmpty { "{\"error\":\"超时\"}" }
+            val ok = latch.await(15, java.util.concurrent.TimeUnit.SECONDS)
+            if (!ok) Log.w("Nudge", "screenshotAndAnalyze: timeout after 15s")
+            return result.ifEmpty { "{\"error\":\"截图或AI分析超时(15s)\"}" }
         } catch (e: Exception) {
+            Log.e("Nudge", "screenshotAndAnalyze error: ${e.message}", e)
             return "{\"error\":\"${e.message}\"}"
         }
     }
@@ -874,7 +879,7 @@ private fun getSleepData(): String {
         try {
             val prefs = context.getSharedPreferences("nudge", android.content.Context.MODE_PRIVATE)
             val apiKey = prefs.getString("api_key", "") ?: ""
-            val model = prefs.getString("model", "Qwen/Qwen3.6-35B-A3B") ?: "Qwen/Qwen3.6-35B-A3B"
+            val model = prefs.getString("model", "Qwen/Qwen2.5-VL-32B-Instruct") ?: "Qwen/Qwen2.5-VL-32B-Instruct"
             val apiUrl = prefs.getString("api_url", "https://api.siliconflow.cn/v1/chat/completions") ?: "https://api.siliconflow.cn/v1/chat/completions"
             val prompt = prefs.getString("prompt", "如实描述这个手机屏幕截图的内容，语气自然口语化，简洁直接。看到啥说啥，不加多余评价。不超过100字。") ?: "如实描述"
             if (apiKey.isEmpty()) return "{\"error\":\"请先配置API Key\"}"
