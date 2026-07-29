@@ -75,10 +75,8 @@ class NudgeAccessibilityService : AccessibilityService() {
             callback("{\"error\":\"需要Android 14+\"}")
             return
         }
-        val mainHandler = android.os.Handler(android.os.Looper.getMainLooper())
-        mainHandler.post {
-            try {
-                takeScreenshot(
+        try {
+            takeScreenshot(
                     0,
                     java.util.concurrent.Executors.newSingleThreadExecutor(),
                     object : TakeScreenshotCallback {
