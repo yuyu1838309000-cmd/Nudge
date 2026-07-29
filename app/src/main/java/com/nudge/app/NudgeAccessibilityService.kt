@@ -77,45 +77,44 @@ class NudgeAccessibilityService : AccessibilityService() {
         }
         try {
             takeScreenshot(
-                    0,
-                    java.util.concurrent.Executors.newSingleThreadExecutor(),
-                    object : TakeScreenshotCallback {
-                        override fun onSuccess(result: ScreenshotResult) {
-                            try {
-                                val hb = result.hardwareBuffer
-                                if (hb == null) {
-                                    callback("{\"error\":\"hardwareBuffer为null\"}")
-                                    return
-                                }
-                                val cs = android.graphics.ColorSpace.get(android.graphics.ColorSpace.Named.SRGB)
-                                val bmp = android.graphics.Bitmap.wrapHardwareBuffer(hb, cs)
-                                if (bmp == null) {
-                                    hb.close()
-                                    callback("{\"error\":\"wrapHardwareBuffer返回null\"}")
-                                    return
-                                }
-                                val stream = java.io.ByteArrayOutputStream()
-                                bmp.compress(android.graphics.Bitmap.CompressFormat.JPEG, 70, stream)
-                                val bytes = stream.toByteArray()
-                                if (bytes.isEmpty()) {
-                                    callback("{\"error\":\"压缩后数据为空\"}")
-                                    return
-                                }
-                                val base64 = android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
-                                callback(base64)
-                                hb.close()
-                            } catch (e: Exception) {
-                                callback("{\"error\":\"${e.message}\"}")
+                0,
+                java.util.concurrent.Executors.newSingleThreadExecutor(),
+                object : TakeScreenshotCallback {
+                    override fun onSuccess(result: ScreenshotResult) {
+                        try {
+                            val hb = result.hardwareBuffer
+                            if (hb == null) {
+                                callback("{\"error\":\"hardwareBuffer为null\"}")
+                                return
                             }
-                        }
-                        override fun onFailure(errorCode: Int) {
-                            callback("{\"error\":\"截屏失败，错误码: $errorCode\"}")
+                            val cs = android.graphics.ColorSpace.get(android.graphics.ColorSpace.Named.SRGB)
+                            val bmp = android.graphics.Bitmap.wrapHardwareBuffer(hb, cs)
+                            if (bmp == null) {
+                                hb.close()
+                                callback("{\"error\":\"wrapHardwareBuffer返回null\"}")
+                                return
+                            }
+                            val stream = java.io.ByteArrayOutputStream()
+                            bmp.compress(android.graphics.Bitmap.CompressFormat.JPEG, 70, stream)
+                            val bytes = stream.toByteArray()
+                            if (bytes.isEmpty()) {
+                                callback("{\"error\":\"压缩后数据为空\"}")
+                                return
+                            }
+                            val base64 = android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
+                            callback(base64)
+                            hb.close()
+                        } catch (e: Exception) {
+                            callback("{\"error\":\"${e.message}\"}")
                         }
                     }
-                )
-            } catch (e: Exception) {
-                callback("{\"error\":\"${e.message}\"}")
-            }
+                    override fun onFailure(errorCode: Int) {
+                        callback("{\"error\":\"截屏失败，错误码: $errorCode\"}")
+                    }
+                }
+            )
+        } catch (e: Exception) {
+            callback("{\"error\":\"${e.message}\"}")
         }
     }
 
