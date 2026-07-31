@@ -763,7 +763,7 @@ class HttpServer(private val port: Int, private val context: Context) {
         if (!NudgeNotificationService.isRunning) {
             return "{\"error\":\"通知监听服务未开启，请在系统设置→通知使用权中开启Nudge\"}"
         }
-        val list = NudgeNotificationService.lastNotifications.take(count)
+        val list = NudgeNotificationService.notifMap.values.toList().asReversed().take(count)
         val arr = JSONArray()
         for (item in list) {
             try { arr.put(JSONObject(item)) } catch (_: Exception) {}

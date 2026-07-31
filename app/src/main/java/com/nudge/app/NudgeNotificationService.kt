@@ -6,7 +6,7 @@ import android.service.notification.StatusBarNotification
 class NudgeNotificationService : NotificationListenerService() {
 
     companion object {
-        var lastNotifications: MutableList<String> = mutableListOf()
+        var notifMap: MutableMap<String, String> = mutableMapOf()
         var isRunning: Boolean = false
     }
 
@@ -30,9 +30,15 @@ class NudgeNotificationService : NotificationListenerService() {
             packageManager.getApplicationLabel(packageManager.getApplicationInfo(pkg, 0)).toString()
         } catch (_: Exception) { pkg }
         val entry = "{\"app\":\"$appName\",\"package\":\"$pkg\",\"title\":\"${title.replace("\"","\\\"")}\",\"text\":\"${text.replace("\"","\\\"")}\",\"time\":${System.currentTimeMillis()}}"
-        lastNotifications.add(0, entry)
-        if (lastNotifications.size > 50) lastNotifications.removeAt(lastNotifications.size - 1)
+        notifMap[sbn.key] = entry
+        if (notifMap.size > 100) {
+            val oldest = notifMap.keys.firstOrNull()
+            if (oldest != null) notifMap.remove(oldest)
+        }
     }
 
-    override fun onNotificationRemoved(sbn: StatusBarNotification?) {}
+    override fun onNotificationRemoved(sbn: StatusBarNotification?) {
+        if (sbn == null) return
+        notifMap.remove(sbn.key)
+    }
 }
