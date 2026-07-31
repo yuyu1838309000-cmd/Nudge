@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true"
+    android:scrollbarStyle="outsideOverlay">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <!-- 视觉模型配置 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/card_bg"
+            android:padding="18dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="视觉模型配置"
+                android:textSize="13sp"
+                android:textColor="@color/text_secondary"
+                android:fontFamily="sans-serif-medium"
+                android:letterSpacing="0.05"
+                android:layout_marginBottom="14dp" />
+
+            <EditText
+                android:id="@+id/apiKeyInput"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:hint="API Key"
+                android:textColorHint="@color/text_dim"
+                android:textColor="@color/text_primary"
+                android:textSize="13sp"
+                android:background="@drawable/edittext_bg"
+                android:paddingHorizontal="14dp"
+                android:gravity="center_vertical"
+                android:importantForAutofill="no"
+                android:inputType="text"
+                android:layout_marginBottom="10dp" />
+
+            <EditText
+                android:id="@+id/modelInput"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:hint="模型名"
+                android:textColorHint="@color/text_dim"
+                android:textColor="@color/text_primary"
+                android:textSize="13sp"
+                android:background="@drawable/edittext_bg"
+                android:paddingHorizontal="14dp"
+                android:gravity="center_vertical"
+                android:singleLine="true"
+                android:layout_marginBottom="10dp" />
+
+            <EditText
+                android:id="@+id/urlInput"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:hint="API URL"
+                android:textColorHint="@color/text_dim"
+                android:textColor="@color/text_primary"
+                android:textSize="13sp"
+                android:background="@drawable/edittext_bg"
+                android:paddingHorizontal="14dp"
+                android:gravity="center_vertical"
+                android:singleLine="true"
+                android:layout_marginBottom="10dp" />
+
+            <EditText
+                android:id="@+id/promptInput"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="分析 Prompt"
+                android:textColorHint="@color/text_dim"
+                android:textColor="@color/text_primary"
+                android:textSize="13sp"
+                android:background="@drawable/edittext_bg"
+                android:paddingHorizontal="14dp"
+                android:paddingVertical="12dp"
+                android:gravity="top|start"
+                android:inputType="textMultiLine"
+                android:minLines="2"
+                android:layout_marginBottom="14dp" />
+
+            <Button
+                android:id="@+id/apiSaveBtn"
+                android:layout_width="match_parent"
+                android:layout_height="44dp"
+                android:text="保存配置"
+                android:textSize="14sp"
+                android:textColor="@color/text_primary"
+                android:background="@drawable/btn_primary"
+                android:stateListAnimator="@null"
+                android:elevation="0dp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp" />
+
+            <TextView
+                android:id="@+id/apiStatus"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="12sp"
+                android:textColor="@color/text_dim"
+                android:gravity="center"
+                android:layout_marginTop="8dp" />
+        </LinearLayout>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="14dp" />
+
+        <!-- 关于 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/card_bg"
+            android:padding="18dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="关于"
+                android:textSize="13sp"
+                android:textColor="@color/text_secondary"
+                android:fontFamily="sans-serif-medium"
+                android:letterSpacing="0.05"
+                android:layout_marginBottom="12dp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Nudge 是陈凛的远程感知工具，通过 MCP 协议连接手机。"
+                android:textSize="13sp"
+                android:textColor="@color/text_secondary"
+                android:lineSpacingExtra="4dp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="端口 :8809  |  22 个工具  |  深色模式"
+                android:textSize="12sp"
+                android:textColor="@color/text_dim"
+                android:layout_marginTop="8dp" />
+        </LinearLayout>
+    </LinearLayout>
+</ScrollView>
