@@ -104,20 +104,28 @@ class HttpServer(private val port: Int, private val context: Context) {
 
             var body = ""
             if (contentLength > 0) {
-                val buf = CharArray(contentLength)
+                val raw = ByteArray(contentLength)
                 var total = 0
+                val inStream = socket.getInputStream()
                 while (total < contentLength) {
-                    val n = input.read(buf, total, contentLength - total)
+                    val n = inStream.read(raw, total, contentLength - total)
                     if (n <= 0) break
                     total += n
                 }
-                body = String(buf, 0, total)
+                body = String(raw, 0, total, Charsets.UTF_8)
             } else if (method.uppercase() == "POST") {
                 val sb = StringBuilder()
-                while (input.ready()) {
-                    val c = input.read()
-                    if (c == -1) break
-                    sb.append(c.toChar())
+                var idle = 0
+                while (idle < 50) {
+                    if (input.ready()) {
+                        val c = input.read()
+                        if (c == -1) break
+                        sb.append(c.toChar())
+                        idle = 0
+                    } else {
+                        idle++
+                        Thread.sleep(10)
+                    }
                 }
                 body = sb.toString()
             }
@@ -161,7 +169,7 @@ class HttpServer(private val port: Int, private val context: Context) {
             }
         }
 
-        return "200 OK" to "{\"result\":\"Nudge MCP v0.1.0\"}"
+        return "200 OK" to "{\"result\":\"Nudge MCP v0.3.4\"}"
     }
 
     private fun handleJsonRpc(method: String, params: JSONObject): JSONObject {
@@ -171,7 +179,7 @@ class HttpServer(private val port: Int, private val context: Context) {
                 caps.put("tools", JSONObject())
                 val serverInfo = JSONObject()
                 serverInfo.put("name", "Nudge")
-                serverInfo.put("version", "0.1.0")
+                serverInfo.put("version", "0.3.4")
                 JSONObject().apply {
                     put("protocolVersion", "2024-11-05")
                     put("capabilities", caps)
@@ -637,8 +645,18 @@ class HttpServer(private val port: Int, private val context: Context) {
     }
 
     private fun getSteps(): String {
-        val s = NudgeAccessibilityService.steps
-        return if (s > 0) "{\"steps\":$s}" else "{\"steps\":0,\"note\":\"传感器未激活，请走几步后再试\"}"
+        val total = NudgeAccessibilityService.steps
+        if (total <= 0) return "{\"steps\":0,\"note\":\"传感器未激活，请走几步后再试\"}"
+        val prefs = context.getSharedPreferences("nudge", android.content.Context.MODE_PRIVATE)
+        val today = java.text.SimpleDateFormat("yyyyMMdd", java.util.Locale.US).format(java.util.Date())
+        val baseKey = "step_base_$today"
+        var base = prefs.getLong(baseKey, -1L)
+        if (base < 0 || total < base) {
+            base = total
+            prefs.edit().putLong(baseKey, base).apply()
+        }
+        val todaySteps = total - base
+        return "{\"steps\":$todaySteps}"
     }
 
     private fun getCalendar(days: Int): String {
@@ -812,7 +830,7 @@ class HttpServer(private val port: Int, private val context: Context) {
             wl.release()
             "{\"success\":true,\"action\":\"唤醒屏幕\"}"
         } catch (e: Exception) {
-            "{\"error\":\"\${e.message}\"}"
+            "{\"error\":\"${e.message}\"}"
         }
     }
 
@@ -821,57 +839,7 @@ class HttpServer(private val port: Int, private val context: Context) {
         return try {
             service.readScreen()
         } catch (e: Exception) {
-            "{\"error\":\"\${e.message}\"}"
-        }
-    }
-
-private fun getSleepData(): String {
-        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            return "{\"error\":\"Health Connect 需要 Android 14+\"}"
-        }
-        return try {
-            val client = androidx.health.connect.client.HealthConnectClient.getOrCreate(context)
-            val now = java.time.Instant.now()
-            val start = now.minus(java.time.Duration.ofDays(2))
-            val response = kotlinx.coroutines.runBlocking {
-                client.readRecords(
-                    androidx.health.connect.client.request.ReadRecordsRequest(
-                        recordType = androidx.health.connect.client.records.SleepSessionRecord::class,
-                    timeRangeFilter = androidx.health.connect.client.time.TimeRangeFilter.between(start, now),
-                    pageSize = 10
-                )
-            )
-            }
-            val records = response.records
-            if (records.isEmpty()) return "{\"error\":\"未找到睡眠数据，请确认小米运动已同步\"}"
-            
-            val sessions = org.json.JSONArray()
-            for (r in records) {
-                val dur = java.time.Duration.between(r.startTime, r.endTime)
-                sessions.put(org.json.JSONObject().apply {
-                    put("start", r.startTime.toString())
-                    put("end", r.endTime.toString())
-                    put("duration_min", dur.toMinutes())
-                    put("duration_hours", String.format("%.1f", dur.toMinutes() / 60.0))
-                    if (r.endZoneOffset != null) put("timezone", r.endZoneOffset.toString())
-                })
-            }
-            org.json.JSONObject().apply {
-                put("sessions", sessions)
-                put("count", sessions.length())
-                if (sessions.length() > 0) {
-                    val latest = sessions.getJSONObject(sessions.length() - 1)
-                    put("latest_start", latest.optString("start"))
-                    put("latest_end", latest.optString("end"))
-                    put("latest_duration_hours", latest.optString("duration_hours"))
-                }
-            }.toString()
-        } catch (e: Exception) {
-            if (e is SecurityException || e.message?.contains("permission") == true) {
-                "{\"error\":\"未授权Health Connect。请在 设置→隐私→运动健康 中授权Nudge\"}"
-            } else {
-                "{\"error\":\"Health Connect不可用(OS3限制): \${e.message}\"}"
-            }
+            "{\"error\":\"${e.message}\"}"
         }
     }
 
@@ -928,7 +896,7 @@ private fun getSleepData(): String {
                 val choice = choices.getJSONObject(0)
                 val message = choice.optJSONObject("message")
                 val text = message?.optString("content", "") ?: ""
-                return "{\"description\":\"${text.replace("\"", "\\\"").replace("\n", " ")}\"}"
+                return JSONObject().apply { put("description", text) }.toString()
             }
             return "{\"error\":\"AI返回异常: $respBody\"}"
         } catch (e: Exception) {

@@ -20,7 +20,7 @@ class NudgeAccessibilityService : AccessibilityService() {
         var currentAppName: String = ""
         var isRunning: Boolean = false
         var instance: NudgeAccessibilityService? = null
-        var steps: Long = 0
+        @Volatile var steps: Long = 0
     }
 
     override fun onServiceConnected() {

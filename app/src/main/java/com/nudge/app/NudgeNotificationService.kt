@@ -2,11 +2,12 @@ package com.nudge.app
 
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
+import org.json.JSONObject
 
 class NudgeNotificationService : NotificationListenerService() {
 
     companion object {
-        var notifMap: MutableMap<String, String> = mutableMapOf()
+        var notifMap: java.util.concurrent.ConcurrentHashMap<String, String> = java.util.concurrent.ConcurrentHashMap()
         var isRunning: Boolean = false
     }
 
@@ -29,7 +30,13 @@ class NudgeNotificationService : NotificationListenerService() {
         val appName = try {
             packageManager.getApplicationLabel(packageManager.getApplicationInfo(pkg, 0)).toString()
         } catch (_: Exception) { pkg }
-        val entry = "{\"app\":\"$appName\",\"package\":\"$pkg\",\"title\":\"${title.replace("\"","\\\"")}\",\"text\":\"${text.replace("\"","\\\"")}\",\"time\":${System.currentTimeMillis()}}"
+        val entry = JSONObject().apply {
+            put("app", appName)
+            put("package", pkg)
+            put("title", title)
+            put("text", text)
+            put("time", System.currentTimeMillis())
+        }.toString()
         notifMap[sbn.key] = entry
         if (notifMap.size > 100) {
             val oldest = notifMap.keys.firstOrNull()
