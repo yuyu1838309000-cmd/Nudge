@@ -84,10 +84,10 @@ class HttpServer(private val port: Int, private val context: Context) {
 
     private fun handle(socket: java.net.Socket) {
         try {
-            val input = BufferedReader(InputStreamReader(socket.getInputStream()))
+            val input = socket.getInputStream()
             val output = BufferedWriter(OutputStreamWriter(socket.getOutputStream()))
 
-            val requestLine = input.readLine() ?: return
+            val requestLine = readLine(input) ?: return
             val parts = requestLine.split(" ")
             if (parts.size < 2) return
             val method = parts[0]
@@ -95,9 +95,10 @@ class HttpServer(private val port: Int, private val context: Context) {
 
             var contentLength = 0
             while (true) {
-                val line = input.readLine() ?: break
+                val line = readLine(input) ?: break
                 if (line.isEmpty()) break
-                if (line.startsWith("Content-Length:") || line.startsWith("content-length:")) {
+                val lower = line.lowercase()
+                if (lower.startsWith("content-length:")) {
                     contentLength = line.substringAfter(":").trim().toIntOrNull() ?: 0
                 }
             }
@@ -106,28 +107,24 @@ class HttpServer(private val port: Int, private val context: Context) {
             if (contentLength > 0) {
                 val raw = ByteArray(contentLength)
                 var total = 0
-                val inStream = socket.getInputStream()
                 while (total < contentLength) {
-                    val n = inStream.read(raw, total, contentLength - total)
+                    val n = input.read(raw, total, contentLength - total)
                     if (n <= 0) break
                     total += n
                 }
                 body = String(raw, 0, total, Charsets.UTF_8)
             } else if (method.uppercase() == "POST") {
-                val sb = StringBuilder()
-                var idle = 0
-                while (idle < 50) {
-                    if (input.ready()) {
-                        val c = input.read()
-                        if (c == -1) break
-                        sb.append(c.toChar())
-                        idle = 0
-                    } else {
-                        idle++
-                        Thread.sleep(10)
+                val buf = java.io.ByteArrayOutputStream()
+                val tmp = ByteArray(4096)
+                try {
+                    socket.soTimeout = 1500
+                    while (true) {
+                        val n = input.read(tmp)
+                        if (n <= 0) break
+                        buf.write(tmp, 0, n)
                     }
-                }
-                body = sb.toString()
+                } catch (_: java.net.SocketTimeoutException) {}
+                body = buf.toString(Charsets.UTF_8.name())
             }
 
             val (code, resp) = route(method, path, body)
@@ -143,6 +140,17 @@ class HttpServer(private val port: Int, private val context: Context) {
         } catch (e: Exception) {
             Log.e("Nudge", "handle error: ${e.message}", e)
         }
+    }
+
+    private fun readLine(input: java.io.InputStream): String? {
+        val sb = StringBuilder()
+        var c = input.read()
+        if (c == -1) return null
+        while (c != -1 && c != '\n'.code) {
+            if (c != '\r'.code) sb.append(c.toChar())
+            c = input.read()
+        }
+        return sb.toString()
     }
 
     private fun route(httpMethod: String, path: String, body: String): Pair<String, String> {
