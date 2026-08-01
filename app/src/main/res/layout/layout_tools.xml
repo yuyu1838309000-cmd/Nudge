@@ -35,11 +35,26 @@
         android:layout_weight="1"
         android:scrollbarStyle="outsideOverlay">
 
-        <GridLayout
-            android:id="@+id/toolsGrid"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:columnCount="2"
-            android:paddingBottom="8dp" />
+            android:orientation="horizontal"
+            android:paddingBottom="8dp">
+
+            <LinearLayout
+                android:id="@+id/toolsLeftCol"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:layout_marginEnd="8dp" />
+
+            <LinearLayout
+                android:id="@+id/toolsRightCol"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical" />
+        </LinearLayout>
     </ScrollView>
 </LinearLayout>

@@ -18,7 +18,6 @@ import android.view.Gravity
 import android.view.View
 import android.widget.Button
 import android.widget.EditText
-import android.widget.GridLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ProgressBar
@@ -56,7 +55,8 @@ class MainActivity : ComponentActivity() {
     private lateinit var versionText: TextView
     private lateinit var searchInput: EditText
     private lateinit var toolCountText: TextView
-    private lateinit var toolsGrid: GridLayout
+    private lateinit var toolsLeftCol: LinearLayout
+    private lateinit var toolsRightCol: LinearLayout
     private lateinit var tabOverview: TextView
     private lateinit var tabTools: TextView
     private lateinit var tabSettings: TextView
@@ -124,7 +124,8 @@ class MainActivity : ComponentActivity() {
         versionText = findViewById(R.id.versionText)
         searchInput = findViewById(R.id.searchInput)
         toolCountText = findViewById(R.id.toolCountText)
-        toolsGrid = findViewById(R.id.toolsGrid)
+        toolsLeftCol = findViewById(R.id.toolsLeftCol)
+        toolsRightCol = findViewById(R.id.toolsRightCol)
         tabOverview = findViewById(R.id.tabOverview)
         tabTools = findViewById(R.id.tabTools)
         tabSettings = findViewById(R.id.tabSettings)
@@ -198,7 +199,8 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun buildToolGrid(filter: String = "") {
-        toolsGrid.removeAllViews()
+        toolsLeftCol.removeAllViews()
+        toolsRightCol.removeAllViews()
         val okCount = tools.count { it.status == "ok" }
         val wipCount = tools.count { it.status == "wip" }
         toolCountText.text = "${tools.size} 个工具 | $okCount 可用 · $wipCount 调试中"
@@ -216,8 +218,9 @@ class MainActivity : ComponentActivity() {
                 gravity = Gravity.CENTER
                 setPadding(0, 48, 0, 0)
             }
-            toolsGrid.addView(empty, GridLayout.LayoutParams(
-                GridLayout.spec(0), GridLayout.spec(0, 2)
+            toolsLeftCol.addView(empty, LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
             ))
             return
         }
@@ -230,13 +233,11 @@ class MainActivity : ComponentActivity() {
                 isClickable = true
                 isFocusable = true
             }
-            val lp = GridLayout.LayoutParams(
-                GridLayout.spec(index / 2),
-                GridLayout.spec(index % 2, 1f)
-            )
-            lp.setMargins(0, 0, if (index % 2 == 0) 8 else 0, 8)
-            lp.width = 0
-            card.layoutParams = lp
+            val col = if (index % 2 == 0) toolsLeftCol else toolsRightCol
+            col.addView(card, LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { bottomMargin = 8 })
 
             val topRow = LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
@@ -315,7 +316,6 @@ class MainActivity : ComponentActivity() {
             card.setOnClickListener {
                 detail.visibility = if (detail.visibility == View.VISIBLE) View.GONE else View.VISIBLE
             }
-            toolsGrid.addView(card)
         }
     }
 
