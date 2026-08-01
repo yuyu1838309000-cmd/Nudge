@@ -206,7 +206,7 @@ class HttpServer(private val port: Int, private val context: Context) {
                 })
                 tools.put(JSONObject().apply {
                     put("name", "get_foreground_app")
-                    put("description", "获取当前前台应用的包名和应用名称")
+                    put("description", "获取前台应用包名、名称、界面和停留时长")
                     put("inputSchema", JSONObject().apply {
                         put("type", "object")
                         put("properties", JSONObject())
@@ -238,7 +238,7 @@ class HttpServer(private val port: Int, private val context: Context) {
                 })
                 tools.put(JSONObject().apply {
                     put("name", "get_location")
-                    put("description", "获取当前GPS定位（经纬度）")
+                    put("description", "获取GPS定位（经纬度+地址）")
                     put("inputSchema", JSONObject().apply {
                         put("type", "object")
                         put("properties", JSONObject())
@@ -332,32 +332,8 @@ class HttpServer(private val port: Int, private val context: Context) {
                         put("required", JSONArray().put("package"))
                     })
                 })
-                tools.put(JSONObject().apply {
-                    put("name", "tap")
-                    put("description", "点击屏幕指定坐标")
-                    put("inputSchema", JSONObject().apply {
-                        put("type", "object")
-                        put("properties", JSONObject().apply {
-                            put("x", JSONObject().apply { put("type", "number"); put("description", "X坐标") })
-                            put("y", JSONObject().apply { put("type", "number"); put("description", "Y坐标") })
-                        })
-                        put("required", JSONArray().put("x").put("y"))
-                    })
-                })
-                tools.put(JSONObject().apply {
-                    put("name", "swipe")
-                    put("description", "滑动屏幕")
-                    put("inputSchema", JSONObject().apply {
-                        put("type", "object")
-                        put("properties", JSONObject().apply {
-                            put("x1", JSONObject().apply { put("type", "number") })
-                            put("y1", JSONObject().apply { put("type", "number") })
-                            put("x2", JSONObject().apply { put("type", "number") })
-                            put("y2", JSONObject().apply { put("type", "number") })
-                        })
-                        put("required", JSONArray().put("x1").put("y1").put("x2").put("y2"))
-                    })
-                })
+
+
                 tools.put(JSONObject().apply {
                     put("name", "wake_up")
                     put("description", "亮屏唤醒（不解锁，仅点亮屏幕）")
@@ -494,20 +470,8 @@ class HttpServer(private val port: Int, private val context: Context) {
                             content.put(JSONObject().apply { put("type", "text"); put("text", info) })
                         }
                     }
-                    "tap" -> {
-                        val x = args.optDouble("x", 0.0).toFloat()
-                        val y = args.optDouble("y", 0.0).toFloat()
-                        val info = doTap(x, y)
-                        content.put(JSONObject().apply { put("type", "text"); put("text", info) })
-                    }
-                    "swipe" -> {
-                        val x1 = args.optDouble("x1", 0.0).toFloat()
-                        val y1 = args.optDouble("y1", 0.0).toFloat()
-                        val x2 = args.optDouble("x2", 0.0).toFloat()
-                        val y2 = args.optDouble("y2", 0.0).toFloat()
-                        val info = doSwipe(x1, y1, x2, y2)
-                        content.put(JSONObject().apply { put("type", "text"); put("text", info) })
-                    }
+
+
                     "wake_up" -> {
                         val info = wakeUp()
                         content.put(JSONObject().apply { put("type", "text"); put("text", info) })
@@ -542,7 +506,15 @@ class HttpServer(private val port: Int, private val context: Context) {
             return "无障碍服务未开启或未检测到前台应用。请在系统设置→无障碍→Nudge中开启无障碍服务，然后切换一次应用。"
         }
         val name = NudgeAccessibilityService.currentAppName
-        return "{\"package\":\"$pkg\",\"app_name\":\"$name\"}"
+        val activity = NudgeAccessibilityService.currentActivity
+        val since = NudgeAccessibilityService.currentSince
+        val durationSec = if (since > 0) (System.currentTimeMillis() - since) / 1000 else 0
+        return JSONObject().apply {
+            put("package", pkg)
+            put("app_name", name)
+            put("activity", activity)
+            put("duration_sec", durationSec)
+        }.toString()
     }
 
     private fun screenshotAndAnalyze(): String {
@@ -735,24 +707,6 @@ class HttpServer(private val port: Int, private val context: Context) {
         }
     }
 
-    private fun doTap(x: Float, y: Float): String {
-        val service = NudgeAccessibilityService.instance ?: return "{\"error\":\"无障碍服务未运行\"}"
-        val latch = java.util.concurrent.CountDownLatch(1)
-        var result = false
-        service.doTap(x, y) { ok -> result = ok; latch.countDown() }
-        latch.await(2, java.util.concurrent.TimeUnit.SECONDS)
-        return if (result) "{\"success\":true,\"x\":$x,\"y\":$y}" else "{\"error\":\"点击失败\"}"
-    }
-
-    private fun doSwipe(x1: Float, y1: Float, x2: Float, y2: Float): String {
-        val service = NudgeAccessibilityService.instance ?: return "{\"error\":\"无障碍服务未运行\"}"
-        val latch = java.util.concurrent.CountDownLatch(1)
-        var result = false
-        service.doSwipe(x1, y1, x2, y2, 300) { ok -> result = ok; latch.countDown() }
-        latch.await(2, java.util.concurrent.TimeUnit.SECONDS)
-        return if (result) "{\"success\":true}" else "{\"error\":\"滑动失败\"}"
-    }
-
     private fun openApp(pkg: String): String {
         return try {
             val intent = context.packageManager.getLaunchIntentForPackage(pkg)
@@ -813,12 +767,29 @@ class HttpServer(private val port: Int, private val context: Context) {
                 } catch (_: Exception) {}
             }
             if (best != null) {
-                JSONObject().apply {
+                val json = JSONObject().apply {
                     put("latitude", best.latitude)
                     put("longitude", best.longitude)
                     put("accuracy", best.accuracy.toDouble())
                     put("provider", best.provider ?: "unknown")
-                }.toString()
+                    if (best.hasAltitude()) put("altitude", String.format("%.1f", best.altitude))
+                }
+                try {
+                    val geocoder = android.location.Geocoder(context, java.util.Locale.CHINA)
+                    val addresses = geocoder.getFromLocation(best.latitude, best.longitude, 1)
+                    if (addresses != null && addresses.isNotEmpty()) {
+                        val addr = addresses[0]
+                        val line = addr.getAddressLine(0)
+                        if (!line.isNullOrEmpty()) {
+                            json.put("address", line)
+                        } else {
+                            val parts = listOf(addr.adminArea, addr.locality, addr.subLocality, addr.thoroughfare)
+                                .filter { !it.isNullOrEmpty() }
+                            if (parts.isNotEmpty()) json.put("address", parts.joinToString(""))
+                        }
+                    }
+                } catch (_: Exception) {}
+                json.toString()
             } else {
                 "{\"error\":\"无法获取位置，请确保GPS已开启\"}"
             }

@@ -76,11 +76,11 @@ class MainActivity : ComponentActivity() {
     private val tools = listOf(
         ToolDef("ping", "测试连通性", "ok", testable = true),
         ToolDef("wake_up", "亮屏唤醒", "ok", testable = true),
-        ToolDef("get_foreground_app", "获取前台应用包名和名称", "ok", testable = true),
+        ToolDef("get_foreground_app", "前台应用包名/名称/界面/停留时长", "ok", testable = true),
         ToolDef("screenshot_analyze", "截屏并用AI分析内容", "ok", "无参，耗时约10-30秒", true),
         ToolDef("sensor_data", "加速度/光线/陀螺仪等传感器", "ok", testable = true),
         ToolDef("device_status", "锁屏/电量/充电/网络状态", "ok", testable = true),
-        ToolDef("get_location", "GPS定位经纬度", "ok", "需要定位权限", true),
+        ToolDef("get_location", "GPS定位(经纬度+地址)", "ok", "需要定位权限", true),
         ToolDef("get_notifications", "最近通知列表", "ok", "需要通知监听权限", true),
         ToolDef("get_steps", "今日步数", "ok", testable = true),
         ToolDef("calendar_query", "查询日历事件", "ok", "days: 查询天数，默认7", true),
@@ -92,8 +92,6 @@ class MainActivity : ComponentActivity() {
         ToolDef("press_back", "返回键", "ok", testable = true),
         ToolDef("press_home", "回桌面", "ok", testable = true),
         ToolDef("open_app", "打开指定应用", "ok", "package: 应用包名必填"),
-        ToolDef("tap", "点击屏幕指定坐标", "ok", "x, y 必填"),
-        ToolDef("swipe", "滑动屏幕", "ok", "x1, y1, x2, y2 必填"),
         ToolDef("read_screen", "读取当前界面所有文字", "ok", testable = true),
         ToolDef("switch_to_rikkahub", "切回RikkaHub对话", "ok", testable = true),
     )

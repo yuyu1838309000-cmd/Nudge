@@ -144,7 +144,7 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="端口 :8809  |  22 个工具  |  深色模式"
+                android:text="端口 :8809  |  20 个工具  |  深色模式"
                 android:textSize="12sp"
                 android:textColor="@color/text_dim"
                 android:layout_marginTop="8dp" />

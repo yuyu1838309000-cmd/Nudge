@@ -18,6 +18,8 @@ class NudgeAccessibilityService : AccessibilityService() {
         )
         var currentPackage: String = ""
         var currentAppName: String = ""
+        var currentActivity: String = ""
+        var currentSince: Long = 0L
         var isRunning: Boolean = false
         var instance: NudgeAccessibilityService? = null
         @Volatile var steps: Long = 0
@@ -65,6 +67,8 @@ class NudgeAccessibilityService : AccessibilityService() {
             } catch (_: Exception) {
                 pkg
             }
+            currentActivity = event.className?.toString() ?: ""
+            currentSince = System.currentTimeMillis()
         }
     }
 
@@ -115,39 +119,6 @@ class NudgeAccessibilityService : AccessibilityService() {
             )
         } catch (e: Exception) {
             callback("{\"error\":\"${e.message}\"}")
-        }
-    }
-
-    fun doTap(x: Float, y: Float, callback: (Boolean) -> Unit) {
-        val mainHandler = android.os.Handler(android.os.Looper.getMainLooper())
-        mainHandler.post {
-            val path = android.graphics.Path()
-            path.moveTo(x, y)
-            val stroke = android.accessibilityservice.GestureDescription.StrokeDescription(path, 0, 100)
-            val builder = android.accessibilityservice.GestureDescription.Builder()
-            builder.addStroke(stroke)
-            val cb = object : android.accessibilityservice.AccessibilityService.GestureResultCallback() {
-                override fun onCompleted(gd: android.accessibilityservice.GestureDescription?) { callback(true) }
-                override fun onCancelled(gd: android.accessibilityservice.GestureDescription?) { callback(false) }
-            }
-            dispatchGesture(builder.build(), cb, null)
-        }
-    }
-
-    fun doSwipe(x1: Float, y1: Float, x2: Float, y2: Float, dur: Long, callback: (Boolean) -> Unit) {
-        val mainHandler = android.os.Handler(android.os.Looper.getMainLooper())
-        mainHandler.post {
-            val path = android.graphics.Path()
-            path.moveTo(x1, y1)
-            path.lineTo(x2, y2)
-            val stroke = android.accessibilityservice.GestureDescription.StrokeDescription(path, 0, dur)
-            val builder = android.accessibilityservice.GestureDescription.Builder()
-            builder.addStroke(stroke)
-            val cb = object : android.accessibilityservice.AccessibilityService.GestureResultCallback() {
-                override fun onCompleted(gd: android.accessibilityservice.GestureDescription?) { callback(true) }
-                override fun onCancelled(gd: android.accessibilityservice.GestureDescription?) { callback(false) }
-            }
-            dispatchGesture(builder.build(), cb, null)
         }
     }
 
