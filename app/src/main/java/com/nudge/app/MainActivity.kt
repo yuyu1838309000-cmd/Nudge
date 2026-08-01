@@ -285,18 +285,17 @@ class MainActivity : ComponentActivity() {
                 detail.addView(paramsTv)
             }
             if (tool.testable) {
-                val testBtn = Button(this).apply {
+                val testBtn = TextView(this).apply {
                     text = "测试"
                     textSize = 12f
                     setTextColor(Color.WHITE)
                     background = ContextCompat.getDrawable(this@MainActivity, R.drawable.btn_outline)
-                    stateListAnimator = null
-                    elevation = 0f
-                    isAllCaps = false
-                    minWidth = 0
-                    setPadding(0, 0, 0, 0)
+                    gravity = Gravity.CENTER
+                    minHeight = 0
+                    isClickable = true
+                    isFocusable = true
                     layoutParams = LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.MATCH_PARENT, 34
+                        LinearLayout.LayoutParams.MATCH_PARENT, 36
                     ).apply { topMargin = 8 }
                 }
                 val resultTv = TextView(this).apply {
@@ -347,7 +346,11 @@ class MainActivity : ComponentActivity() {
                 }
                 s.close()
                 val resp = sb.toString()
-                val body = resp.substringAfter("\r\n\r\n").ifEmpty { resp.substringAfter("\n\n") }
+                val body = when {
+                    resp.contains("\r\n\r\n") -> resp.substringAfter("\r\n\r\n")
+                    resp.contains("\n\n") -> resp.substringAfter("\n\n")
+                    else -> resp
+                }
                 val result = try {
                     val json = JSONObject(body)
                     val content = json.optJSONArray("content")
