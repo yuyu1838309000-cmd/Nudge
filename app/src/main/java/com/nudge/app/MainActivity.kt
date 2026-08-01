@@ -295,8 +295,10 @@ class MainActivity : ComponentActivity() {
                     minHeight = 0
                     isClickable = true
                     isFocusable = true
+                    setPadding(0, 10, 0, 10)
                     layoutParams = LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.MATCH_PARENT, 36
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT
                     ).apply { topMargin = 8 }
                 }
                 val resultTv = TextView(this).apply {
