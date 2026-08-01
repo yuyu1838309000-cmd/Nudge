@@ -23,6 +23,20 @@ class NudgeAccessibilityService : AccessibilityService() {
         var isRunning: Boolean = false
         var instance: NudgeAccessibilityService? = null
         @Volatile var steps: Long = 0
+        private val labelCache = java.util.concurrent.ConcurrentHashMap<String, String>()
+
+        fun appLabel(pkg: String): String {
+            labelCache[pkg]?.let { return it }
+            val label = try {
+                val inst = instance ?: return pkg.substringAfterLast('.')
+                val ai = inst.packageManager.getApplicationInfo(pkg, 0)
+                val l = ai.loadLabel(inst.packageManager).toString()
+                if (l.isNotBlank()) l else null
+            } catch (_: Exception) { null }
+            val result = label ?: pkg.substringAfterLast('.')
+            labelCache[pkg] = result
+            return result
+        }
     }
 
     override fun onServiceConnected() {
@@ -60,13 +74,7 @@ class NudgeAccessibilityService : AccessibilityService() {
             val pkg = event.packageName?.toString() ?: return
             if (pkg in Companion.IGNORED_PACKAGES) return
             currentPackage = pkg
-            currentAppName = try {
-                packageManager.getApplicationLabel(
-                    packageManager.getApplicationInfo(pkg, 0)
-                ).toString()
-            } catch (_: Exception) {
-                pkg
-            }
+            currentAppName = appLabel(pkg)
             currentActivity = event.className?.toString() ?: ""
             currentSince = System.currentTimeMillis()
         }
