@@ -39,8 +39,10 @@ class NudgeNotificationService : NotificationListenerService() {
         }.toString()
         notifMap[sbn.key] = entry
         if (notifMap.size > 100) {
-            val oldest = notifMap.keys.firstOrNull()
-            if (oldest != null) notifMap.remove(oldest)
+            val oldest = notifMap.entries.minByOrNull { entry ->
+                runCatching { JSONObject(entry.value).optLong("time", Long.MAX_VALUE) }.getOrDefault(Long.MAX_VALUE)
+            }
+            if (oldest != null) notifMap.remove(oldest.key)
         }
     }
 

@@ -58,5 +58,9 @@
                 <action android:name="android.service.notification.NotificationListenerService" />
             </intent-filter>
         </service>
+        <receiver
+            android:name=".AlarmReceiver"
+            android:exported="false" />
+
     </application>
 </manifest>

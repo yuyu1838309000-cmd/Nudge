@@ -49,6 +49,7 @@ class NudgeAccessibilityService : AccessibilityService() {
     override fun onDestroy() {
         super.onDestroy()
         isRunning = false
+        instance = null
         stepSensorManager?.unregisterListener(stepListener)
     }
 

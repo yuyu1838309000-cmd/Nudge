@@ -85,7 +85,7 @@ class HttpServer(private val port: Int, private val context: Context) {
     private fun handle(socket: java.net.Socket) {
         try {
             val input = socket.getInputStream()
-            val output = BufferedWriter(OutputStreamWriter(socket.getOutputStream()))
+            val output = socket.getOutputStream()
 
             val requestLine = readLine(input) ?: return
             val parts = requestLine.split(" ")
@@ -129,12 +129,9 @@ class HttpServer(private val port: Int, private val context: Context) {
 
             val (code, resp) = route(method, path, body)
             val respBytes = resp.toByteArray(Charsets.UTF_8)
-            output.write("HTTP/1.1 $code\r\n")
-            output.write("Content-Type: application/json; charset=utf-8\r\n")
-            output.write("Content-Length: ${respBytes.size}\r\n")
-            output.write("Connection: close\r\n")
-            output.write("\r\n")
-            output.write(resp)
+            val head = "HTTP/1.1 $code\r\nContent-Type: application/json; charset=utf-8\r\nContent-Length: ${respBytes.size}\r\nConnection: close\r\n\r\n"
+            output.write(head.toByteArray(Charsets.UTF_8))
+            output.write(respBytes)
             output.flush()
             socket.close()
         } catch (e: Exception) {
@@ -177,7 +174,7 @@ class HttpServer(private val port: Int, private val context: Context) {
             }
         }
 
-        return "200 OK" to "{\"result\":\"Nudge MCP v0.3.4\"}"
+        return "200 OK" to "{\"result\":\"Nudge MCP v0.3.13\"}"
     }
 
     private fun handleJsonRpc(method: String, params: JSONObject): JSONObject {
@@ -187,7 +184,7 @@ class HttpServer(private val port: Int, private val context: Context) {
                 caps.put("tools", JSONObject())
                 val serverInfo = JSONObject()
                 serverInfo.put("name", "Nudge")
-                serverInfo.put("version", "0.3.4")
+                serverInfo.put("version", "0.3.13")
                 JSONObject().apply {
                     put("protocolVersion", "2024-11-05")
                     put("capabilities", caps)
@@ -707,18 +704,6 @@ class HttpServer(private val port: Int, private val context: Context) {
         }
     }
 
-    private fun openApp(pkg: String): String {
-        return try {
-            val intent = context.packageManager.getLaunchIntentForPackage(pkg)
-            if (intent == null) return "{\"error\":\"未找到应用: $pkg\"}"
-            intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-            context.startActivity(intent)
-            "{\"success\":true,\"package\":\"$pkg\"}"
-        } catch (e: Exception) {
-            "{\"error\":\"${e.message}\"}"
-        }
-    }
-
     private fun setAlarm(hour: Int, minute: Int, message: String): String {
         return try {
             val am = context.getSystemService(Context.ALARM_SERVICE) as android.app.AlarmManager
@@ -729,8 +714,9 @@ class HttpServer(private val port: Int, private val context: Context) {
             if (cal.timeInMillis <= System.currentTimeMillis()) {
                 cal.add(java.util.Calendar.DAY_OF_MONTH, 1)
             }
-            val intent = android.content.Intent(context, McpService::class.java)
-            val pi = android.app.PendingIntent.getBroadcast(context, 0, intent, android.app.PendingIntent.FLAG_IMMUTABLE)
+            val intent = android.content.Intent(context, AlarmReceiver::class.java)
+            intent.putExtra("message", message)
+            val pi = android.app.PendingIntent.getBroadcast(context, (hour * 60 + minute) % 10000, intent, android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT)
             val info = android.app.AlarmManager.AlarmClockInfo(cal.timeInMillis, pi)
             am.setAlarmClock(info, pi)
             "{\"success\":true,\"time\":\"${hour}:${String.format("%02d", minute)}\",\"message\":\"${message}\"}"
@@ -743,11 +729,12 @@ class HttpServer(private val port: Int, private val context: Context) {
         if (!NudgeNotificationService.isRunning) {
             return "{\"error\":\"通知监听服务未开启，请在系统设置→通知使用权中开启Nudge\"}"
         }
-        val list = NudgeNotificationService.notifMap.values.toList().asReversed().take(count)
         val arr = JSONArray()
-        for (item in list) {
-            try { arr.put(JSONObject(item)) } catch (_: Exception) {}
-        }
+        val sorted = NudgeNotificationService.notifMap.values
+            .mapNotNull { runCatching { JSONObject(it) }.getOrNull() }
+            .sortedByDescending { it.optLong("time", 0L) }
+            .take(count)
+        for (item in sorted) arr.put(item)
         return JSONObject().apply { put("notifications", arr); put("count", arr.length()) }.toString()
     }
 
@@ -802,11 +789,14 @@ class HttpServer(private val port: Int, private val context: Context) {
         return try {
             val pm = context.getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
             val wl = pm.newWakeLock(
-                android.os.PowerManager.SCREEN_BRIGHT_WAKE_LOCK or android.os.PowerManager.ACQUIRE_CAUSES_WAKEUP,
+                android.os.PowerManager.SCREEN_BRIGHT_WAKE_LOCK or android.os.PowerManager.ACQUIRE_CAUSES_WAKEUP or android.os.PowerManager.ON_AFTER_RELEASE,
                 "nudge:wake"
             )
-            wl.acquire(500)
-            wl.release()
+            try {
+                wl.acquire(500)
+            } finally {
+                wl.release()
+            }
             "{\"success\":true,\"action\":\"唤醒屏幕\"}"
         } catch (e: Exception) {
             "{\"error\":\"${e.message}\"}"
