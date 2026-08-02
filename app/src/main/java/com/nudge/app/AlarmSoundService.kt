@@ -28,7 +28,6 @@ class AlarmSoundService : Service() {
     private var ringId: Long = -1L
 
     companion object {
-        private const val ACTION_STOP = "com.nudge.app.ALARM_STOP"
         private const val RING_DURATION_MS = 60_000L // 最长响60秒
 
         fun start(context: Context, id: Long, title: String, note: String) {
@@ -41,17 +40,18 @@ class AlarmSoundService : Service() {
         }
 
         fun stop(context: Context) {
-            val intent = Intent(context, AlarmSoundService::class.java).apply {
-                action = ACTION_STOP
+            // 广播方式: 后台也能可靠触发，避免 startService 后台限制
+            val intent = Intent(context, AlarmReceiver::class.java).apply {
+                action = AlarmReceiver.ACTION_STOP
             }
-            context.startService(intent)
+            context.sendBroadcast(intent)
         }
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (intent?.action == ACTION_STOP) {
+        if (intent?.action == AlarmReceiver.ACTION_STOP) {
             stopRinging()
             return START_NOT_STICKY
         }
@@ -96,8 +96,8 @@ class AlarmSoundService : Service() {
         )
 
         // 停止按钮
-        val stopIntent = Intent(this, AlarmSoundService::class.java).apply { action = ACTION_STOP }
-        val stopPi = PendingIntent.getService(
+        val stopIntent = Intent(this, AlarmReceiver::class.java).apply { action = AlarmReceiver.ACTION_STOP }
+        val stopPi = PendingIntent.getBroadcast(
             this, notifyId() + 1, stopIntent,
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
@@ -126,6 +126,7 @@ class AlarmSoundService : Service() {
                     .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                     .build()
             )
+            p.setVolume(0.8f, 0.8f)
             p.start()
             player = p
         } catch (e: Exception) {

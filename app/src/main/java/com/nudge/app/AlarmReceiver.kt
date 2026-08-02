@@ -6,7 +6,17 @@ import android.content.Intent
 
 class AlarmReceiver : BroadcastReceiver() {
 
+    companion object {
+        const val ACTION_STOP = "com.nudge.app.ALARM_STOP"
+    }
+
     override fun onReceive(context: Context, intent: Intent) {
+        // 停止铃声广播
+        if (intent.action == ACTION_STOP) {
+            context.stopService(Intent(context, AlarmSoundService::class.java))
+            return
+        }
+
         val id = intent.getLongExtra("id", -1L)
         val type = intent.getStringExtra("type") ?: "alarm"
         val title = intent.getStringExtra("title") ?: "闹钟"
