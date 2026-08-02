@@ -1,16 +1,8 @@
 package com.nudge.app
 
-import android.app.NotificationChannel
-import android.app.NotificationManager
-import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
-import android.net.Uri
-import android.os.Build
-import androidx.core.app.NotificationCompat
-import androidx.core.content.ContextCompat
 
 class AlarmReceiver : BroadcastReceiver() {
 
@@ -20,64 +12,10 @@ class AlarmReceiver : BroadcastReceiver() {
         val title = intent.getStringExtra("title") ?: "闹钟"
         val note = intent.getStringExtra("note") ?: ""
         if (id > 0) {
+            // 处理重复/关闭逻辑
             AlarmStore.onFired(context, id)
         }
-
-        // Android 13+ 通知权限检查
-        if (Build.VERSION.SDK_INT >= 33 &&
-            ContextCompat.checkSelfPermission(context, android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-            return
-        }
-
-        val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-
-        // 清理旧渠道, 统一用新的单渠道
-        nm.deleteNotificationChannel("nudge_alarm")
-        nm.deleteNotificationChannel("nudge_alarm_v2")
-
-        val channelId = "nudge_alarm"
-        val soundUri = Uri.parse("android.resource://${context.packageName}/${R.raw.alarm}")
-        val channel = NotificationChannel(channelId, "Nudge 闹钟", NotificationManager.IMPORTANCE_HIGH).apply {
-            enableVibration(true)
-            vibrationPattern = longArrayOf(0, 600, 400, 600, 400, 600)
-            setSound(soundUri, null)
-        }
-        nm.createNotificationChannel(channel)
-
-        val notifTitle = if (type == "countdown") "⏱️ $title" else "⏰ $title"
-        val notifText = if (note.isNotBlank()) note else (if (type == "countdown") "倒计时结束" else "时间到啦")
-
-        val fullIntent = Intent(context, AlarmActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            putExtra("from_alarm", true)
-        }
-        val fullPi = PendingIntent.getActivity(
-            context,
-            (id % 50000).toInt(),
-            fullIntent,
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-        )
-
-        val builder = NotificationCompat.Builder(context, channelId)
-            .setContentTitle(notifTitle)
-            .setContentText(notifText)
-            .setStyle(NotificationCompat.BigTextStyle().bigText(notifText))
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setAutoCancel(true)
-            .setCategory(NotificationCompat.CATEGORY_ALARM)
-            .setPriority(NotificationCompat.PRIORITY_MAX)
-            .setContentIntent(fullPi)
-            .setSound(soundUri)
-            .setVibrate(longArrayOf(0, 600, 400, 600, 400, 600))
-
-        if (Build.VERSION.SDK_INT >= 29) {
-            builder.setFullScreenIntent(fullPi, true)
-        }
-
-        try {
-            nm.notify((id % 100000).toInt(), builder.build())
-        } catch (_: Exception) {
-            nm.notify(1, builder.build())
-        }
+        // 前台服务直接播放铃声+震动(不依赖通知渠道声音)
+        AlarmSoundService.start(context, id, title, if (type == "countdown") "倒计时结束 $note" else note)
     }
 }
