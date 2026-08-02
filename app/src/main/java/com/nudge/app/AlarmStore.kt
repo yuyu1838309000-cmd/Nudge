@@ -6,17 +6,22 @@ import android.content.Context
 import android.content.Intent
 import org.json.JSONArray
 import org.json.JSONObject
+import java.util.Calendar
 
 object AlarmStore {
 
     data class AlarmItem(
         val id: Long,
-        val type: String,       // "alarm" 定时 | "countdown" 倒计时
-        val hour: Int,          // 定时: 小时
-        val minute: Int,        // 定时: 分钟
-        val message: String,    // 备注
-        val enabled: Boolean,   // 开关
-        val triggerAt: Long,    // 倒计时: 触发时间戳; 定时: 下次触发时间戳(用于显示)
+        val type: String,          // "alarm" 定时 | "countdown" 倒计时
+        val hour: Int,             // 定时: 小时
+        val minute: Int,           // 定时: 分钟
+        val title: String,         // 标题
+        val note: String,          // 备注
+        val enabled: Boolean,      // 开关
+        val triggerAt: Long,       // 下次触发时间戳
+        val repeat: String,        // "once" 响一次 | "daily" 每天 | "weekly" 按周几
+        val weekdays: List<Int>,   // weekly: 1=周一 ... 7=周日
+        val durationSec: Long,     // countdown: 倒计时时长(秒)，用于重开
         val createdAt: Long
     )
 
@@ -31,14 +36,23 @@ object AlarmStore {
             val arr = JSONArray(raw)
             for (i in 0 until arr.length()) {
                 val o = arr.getJSONObject(i)
+                val wdArr = o.optJSONArray("weekdays")
+                val weekdays = mutableListOf<Int>()
+                if (wdArr != null) {
+                    for (j in 0 until wdArr.length()) weekdays.add(wdArr.getInt(j))
+                }
                 list.add(AlarmItem(
                     id = o.getLong("id"),
                     type = o.optString("type", "alarm"),
                     hour = o.optInt("hour", 0),
                     minute = o.optInt("minute", 0),
-                    message = o.optString("message", ""),
+                    title = o.optString("title", o.optString("message", "闹钟")),
+                    note = o.optString("note", ""),
                     enabled = o.optBoolean("enabled", true),
                     triggerAt = o.optLong("triggerAt", 0L),
+                    repeat = o.optString("repeat", "once"),
+                    weekdays = weekdays,
+                    durationSec = o.optLong("durationSec", 0L),
                     createdAt = o.optLong("createdAt", 0L)
                 ))
             }
@@ -49,14 +63,20 @@ object AlarmStore {
     private fun save(context: Context, list: List<AlarmItem>) {
         val arr = JSONArray()
         for (item in list) {
+            val wdArr = JSONArray()
+            for (d in item.weekdays) wdArr.put(d)
             arr.put(JSONObject().apply {
                 put("id", item.id)
                 put("type", item.type)
                 put("hour", item.hour)
                 put("minute", item.minute)
-                put("message", item.message)
+                put("title", item.title)
+                put("note", item.note)
                 put("enabled", item.enabled)
                 put("triggerAt", item.triggerAt)
+                put("repeat", item.repeat)
+                put("weekdays", wdArr)
+                put("durationSec", item.durationSec)
                 put("createdAt", item.createdAt)
             })
         }
@@ -64,25 +84,58 @@ object AlarmStore {
             .edit().putString(KEY, arr.toString()).apply()
     }
 
-    /** 定时闹钟的下一次触发时间戳 */
+    /** 定时闹钟下一次触发时间戳(once/daily 用) */
     fun nextAlarmTime(hour: Int, minute: Int): Long {
-        val cal = java.util.Calendar.getInstance()
-        cal.set(java.util.Calendar.HOUR_OF_DAY, hour)
-        cal.set(java.util.Calendar.MINUTE, minute)
-        cal.set(java.util.Calendar.SECOND, 0)
-        cal.set(java.util.Calendar.MILLISECOND, 0)
+        val cal = Calendar.getInstance()
+        cal.set(Calendar.HOUR_OF_DAY, hour)
+        cal.set(Calendar.MINUTE, minute)
+        cal.set(Calendar.SECOND, 0)
+        cal.set(Calendar.MILLISECOND, 0)
         if (cal.timeInMillis <= System.currentTimeMillis()) {
-            cal.add(java.util.Calendar.DAY_OF_MONTH, 1)
+            cal.add(Calendar.DAY_OF_MONTH, 1)
         }
         return cal.timeInMillis
     }
 
-    /** 添加并调度，返回新 item */
-    fun add(context: Context, type: String, hour: Int, minute: Int, message: String, countdownSeconds: Long): AlarmItem {
+    /** ISO 周几: 1=周一 ... 7=周日 */
+    private fun isoWeekday(cal: Calendar): Int {
+        val dow = cal.get(Calendar.DAY_OF_WEEK) // SUNDAY=1 ... SATURDAY=7
+        return if (dow == Calendar.SUNDAY) 7 else dow - 1
+    }
+
+    /** weekly: 下一个选中周几的时间戳 */
+    fun nextWeeklyTime(weekdays: List<Int>, hour: Int, minute: Int): Long {
+        val cal = Calendar.getInstance()
+        cal.set(Calendar.HOUR_OF_DAY, hour)
+        cal.set(Calendar.MINUTE, minute)
+        cal.set(Calendar.SECOND, 0)
+        cal.set(Calendar.MILLISECOND, 0)
+        for (offset in 0..7) {
+            val tmp = cal.clone() as Calendar
+            tmp.add(Calendar.DAY_OF_MONTH, offset)
+            if (weekdays.contains(isoWeekday(tmp))) {
+                if (offset > 0 || tmp.timeInMillis > System.currentTimeMillis()) {
+                    return tmp.timeInMillis
+                }
+            }
+        }
+        // 兜底: 明天同一时间
+        cal.add(Calendar.DAY_OF_MONTH, 1)
+        return cal.timeInMillis
+    }
+
+    /** 添加并调度 */
+    fun add(context: Context, type: String, hour: Int, minute: Int, title: String, note: String,
+            repeat: String, weekdays: List<Int>, countdownSeconds: Long): AlarmItem {
         val now = System.currentTimeMillis()
-        val id = System.currentTimeMillis() % 1000000
-        val triggerAt = if (type == "countdown") now + countdownSeconds * 1000 else nextAlarmTime(hour, minute)
-        val item = AlarmItem(id, type, hour, minute, message, true, triggerAt, now)
+        val id = (System.currentTimeMillis() % 1000000) + (Math.random() * 1000).toLong()
+        val triggerAt = when {
+            type == "countdown" -> now + countdownSeconds * 1000
+            repeat == "weekly" -> nextWeeklyTime(weekdays, hour, minute)
+            else -> nextAlarmTime(hour, minute)
+        }
+        val item = AlarmItem(id, type, hour, minute, title, note, true, triggerAt,
+            repeat, weekdays, countdownSeconds, now)
         val list = load(context)
         list.add(item)
         save(context, list)
@@ -95,14 +148,25 @@ object AlarmStore {
         val list = load(context)
         val idx = list.indexOfFirst { it.id == id }
         if (idx < 0) return
-        val item = list[idx].copy(enabled = enabled)
+        var item = list[idx]
+        if (enabled) {
+            // 重新打开: 倒计时按原时长重新计时; 定时按规则重算下次触发
+            item = when {
+                item.type == "countdown" -> {
+                    val dur = if (item.durationSec > 0) item.durationSec else 60L
+                    item.copy(enabled = true, triggerAt = System.currentTimeMillis() + dur * 1000)
+                }
+                item.repeat == "weekly" ->
+                    item.copy(enabled = true, triggerAt = nextWeeklyTime(item.weekdays, item.hour, item.minute))
+                else ->
+                    item.copy(enabled = true, triggerAt = nextAlarmTime(item.hour, item.minute))
+            }
+        } else {
+            item = item.copy(enabled = false)
+        }
         list[idx] = item
         save(context, list)
-        if (enabled) {
-            schedule(context, item)
-        } else {
-            cancel(context, item)
-        }
+        if (item.enabled) schedule(context, item) else cancel(context, item)
     }
 
     /** 删除 */
@@ -114,20 +178,32 @@ object AlarmStore {
         save(context, list)
     }
 
-    /** 一次性闹钟响后自动关闭 */
-    fun markFired(context: Context, id: Long) {
+    /** 闹钟触发后处理: once/countdown 自动关闭; daily/weekly 保持开启并重排 */
+    fun onFired(context: Context, id: Long) {
         val list = load(context)
         val idx = list.indexOfFirst { it.id == id }
         if (idx < 0) return
-        list[idx] = list[idx].copy(enabled = false)
-        save(context, list)
+        val item = list[idx]
+        if (item.repeat == "once" || item.type == "countdown") {
+            list[idx] = item.copy(enabled = false)
+            save(context, list)
+        } else {
+            // daily / weekly: 重排下一次
+            val next = if (item.repeat == "weekly")
+                nextWeeklyTime(item.weekdays, item.hour, item.minute)
+            else nextAlarmTime(item.hour, item.minute)
+            list[idx] = item.copy(triggerAt = next)
+            save(context, list)
+            schedule(context, list[idx])
+        }
     }
 
     private fun pendingIntent(context: Context, item: AlarmItem): PendingIntent {
         val intent = Intent(context, AlarmReceiver::class.java).apply {
             putExtra("id", item.id)
             putExtra("type", item.type)
-            putExtra("message", item.message)
+            putExtra("title", item.title)
+            putExtra("note", item.note)
         }
         return PendingIntent.getBroadcast(
             context,
@@ -142,15 +218,12 @@ object AlarmStore {
         val pi = pendingIntent(context, item)
         try {
             if (item.type == "countdown") {
-                // 倒计时: 精确闹钟(允许打盹模式)
                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
                     am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, item.triggerAt, pi)
                 } else {
                     am.setExact(AlarmManager.RTC_WAKEUP, item.triggerAt, pi)
                 }
             } else {
-                // 定时: setAlarmClock 显示在状态栏
-                // 注意: showIntent 必须用不同的 requestCode，否则会覆盖真正带 extras 的 pi
                 val showIntent = Intent(context, AlarmReceiver::class.java).apply {
                     action = "com.nudge.app.SHOW_ALARM"
                 }
@@ -164,12 +237,7 @@ object AlarmStore {
                 am.setAlarmClock(info, pi)
             }
         } catch (e: Exception) {
-            // SCHEDULE_EXACT_ALARM 未授权时退化为 set
-            if (item.type == "countdown") {
-                am.set(AlarmManager.RTC_WAKEUP, item.triggerAt, pi)
-            } else {
-                am.set(AlarmManager.RTC_WAKEUP, item.triggerAt, pi)
-            }
+            am.set(AlarmManager.RTC_WAKEUP, item.triggerAt, pi)
         }
     }
 

@@ -17,9 +17,10 @@ class AlarmReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val id = intent.getLongExtra("id", -1L)
         val type = intent.getStringExtra("type") ?: "alarm"
-        val message = intent.getStringExtra("message") ?: "时间到啦"
+        val title = intent.getStringExtra("title") ?: "闹钟"
+        val note = intent.getStringExtra("note") ?: ""
         if (id > 0) {
-            AlarmStore.markFired(context, id)
+            AlarmStore.onFired(context, id)
         }
 
         // Android 13+ 通知权限检查
@@ -30,12 +31,11 @@ class AlarmReceiver : BroadcastReceiver() {
 
         val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
-        // 清理旧渠道(声音锁死 + 重复), 统一用新的单渠道
+        // 清理旧渠道, 统一用新的单渠道
         nm.deleteNotificationChannel("nudge_alarm")
         nm.deleteNotificationChannel("nudge_alarm_v2")
 
         val channelId = "nudge_alarm"
-        // 内置铃声: res/raw/alarm.wav
         val soundUri = Uri.parse("android.resource://${context.packageName}/${R.raw.alarm}")
         val channel = NotificationChannel(channelId, "Nudge 闹钟", NotificationManager.IMPORTANCE_HIGH).apply {
             enableVibration(true)
@@ -44,7 +44,8 @@ class AlarmReceiver : BroadcastReceiver() {
         }
         nm.createNotificationChannel(channel)
 
-        val title = if (type == "countdown") "⏱️ 倒计时结束" else "⏰ Nudge 闹钟"
+        val notifTitle = if (type == "countdown") "⏱️ $title" else "⏰ $title"
+        val notifText = if (note.isNotBlank()) note else (if (type == "countdown") "倒计时结束" else "时间到啦")
 
         val fullIntent = Intent(context, AlarmActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
@@ -58,8 +59,9 @@ class AlarmReceiver : BroadcastReceiver() {
         )
 
         val builder = NotificationCompat.Builder(context, channelId)
-            .setContentTitle(title)
-            .setContentText(message)
+            .setContentTitle(notifTitle)
+            .setContentText(notifText)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(notifText))
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setAutoCancel(true)
             .setCategory(NotificationCompat.CATEGORY_ALARM)

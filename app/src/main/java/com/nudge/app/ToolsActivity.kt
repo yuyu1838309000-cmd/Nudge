@@ -44,7 +44,7 @@ class ToolsActivity : ComponentActivity() {
         ToolDef("get_notifications", "最近通知列表", "ok", "需要通知监听权限", true),
         ToolDef("get_steps", "今日步数", "ok", testable = true),
         ToolDef("calendar_query", "查询日历事件", "ok", "days: 查询天数，默认7", true),
-        ToolDef("set_alarm", "设置系统闹钟", "ok", "hour, minute 必填；message 备注可选"),
+        ToolDef("set_alarm", "设置系统闹钟", "ok", "hour, minute 必填；title/note/repeat 可选"),
         ToolDef("lock_screen", "强制锁屏", "ok", testable = true),
         ToolDef("media_play_pause", "媒体播放/暂停", "ok", testable = true),
         ToolDef("media_next", "媒体下一首", "ok", testable = true),

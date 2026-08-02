@@ -277,13 +277,16 @@ class HttpServer(private val port: Int, private val context: Context) {
                 })
                 tools.put(JSONObject().apply {
                     put("name", "set_alarm")
-                    put("description", "设置系统闹钟")
+                    put("description", "设置系统闹钟(支持标题/备注/重复)")
                     put("inputSchema", JSONObject().apply {
                         put("type", "object")
                         put("properties", JSONObject().apply {
                             put("hour", JSONObject().apply { put("type", "integer"); put("description", "小时（0-23）") })
                             put("minute", JSONObject().apply { put("type", "integer"); put("description", "分钟（0-59）") })
                             put("message", JSONObject().apply { put("type", "string"); put("description", "闹钟备注（可选）") })
+                            put("title", JSONObject().apply { put("type", "string"); put("description", "闹钟标题（可选）") })
+                            put("note", JSONObject().apply { put("type", "string"); put("description", "备注（可选）") })
+                            put("repeat", JSONObject().apply { put("type", "string"); put("description", "重复: once/daily/weekly（可选，默认once）") })
                         })
                         put("required", JSONArray().put("hour").put("minute"))
                     })
@@ -430,7 +433,10 @@ class HttpServer(private val port: Int, private val context: Context) {
                         val hour = args.optInt("hour", 0)
                         val minute = args.optInt("minute", 0)
                         val message = args.optString("message", "闹钟")
-                        val info = setAlarm(hour, minute, message)
+                        val repeat = args.optString("repeat", "once")
+                        val title = args.optString("title", message)
+                        val note = args.optString("note", "")
+                        val info = setAlarm(hour, minute, message, repeat, title, note)
                         content.put(JSONObject().apply { put("type", "text"); put("text", info) })
                     }
                     "lock_screen" -> {
@@ -704,22 +710,15 @@ class HttpServer(private val port: Int, private val context: Context) {
         }
     }
 
-    private fun setAlarm(hour: Int, minute: Int, message: String): String {
+    private fun setAlarm(hour: Int, minute: Int, message: String, repeat: String, title: String, note: String): String {
         return try {
-            val am = context.getSystemService(Context.ALARM_SERVICE) as android.app.AlarmManager
-            val cal = java.util.Calendar.getInstance()
-            cal.set(java.util.Calendar.HOUR_OF_DAY, hour)
-            cal.set(java.util.Calendar.MINUTE, minute)
-            cal.set(java.util.Calendar.SECOND, 0)
-            if (cal.timeInMillis <= System.currentTimeMillis()) {
-                cal.add(java.util.Calendar.DAY_OF_MONTH, 1)
-            }
-            val intent = android.content.Intent(context, AlarmReceiver::class.java)
-            intent.putExtra("message", message)
-            val pi = android.app.PendingIntent.getBroadcast(context, (hour * 60 + minute) % 10000, intent, android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT)
-            val info = android.app.AlarmManager.AlarmClockInfo(cal.timeInMillis, pi)
-            am.setAlarmClock(info, pi)
-            "{\"success\":true,\"time\":\"${hour}:${String.format("%02d", minute)}\",\"message\":\"${message}\"}"
+            val weekdays = if (repeat == "weekly") {
+                // 默认周一至周五
+                listOf(1, 2, 3, 4, 5)
+            } else emptyList()
+            val item = AlarmStore.add(context, "alarm", hour, minute,
+                title.ifBlank { message }, note, repeat, weekdays, 0)
+            "{\"success\":true,\"time\":\"${hour}:${String.format("%02d", minute)}\",\"repeat\":\"$repeat\",\"title\":\"${item.title}\"}"
         } catch (e: Exception) {
             "{\"error\":\"${e.message}\"}"
         }
