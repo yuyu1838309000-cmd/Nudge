@@ -174,7 +174,7 @@ class HttpServer(private val port: Int, private val context: Context) {
             }
         }
 
-        return "200 OK" to "{\"result\":\"Nudge MCP v0.3.13\"}"
+        return "200 OK" to "{\"result\":\"Nudge MCP v0.3.14\"}"
     }
 
     private fun handleJsonRpc(method: String, params: JSONObject): JSONObject {
@@ -184,7 +184,7 @@ class HttpServer(private val port: Int, private val context: Context) {
                 caps.put("tools", JSONObject())
                 val serverInfo = JSONObject()
                 serverInfo.put("name", "Nudge")
-                serverInfo.put("version", "0.3.13")
+                serverInfo.put("version", "0.3.14")
                 JSONObject().apply {
                     put("protocolVersion", "2024-11-05")
                     put("capabilities", caps)

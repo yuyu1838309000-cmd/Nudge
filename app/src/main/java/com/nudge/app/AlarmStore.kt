@@ -150,10 +150,13 @@ object AlarmStore {
                 }
             } else {
                 // 定时: setAlarmClock 显示在状态栏
-                val showIntent = Intent(context, AlarmReceiver::class.java)
+                // 注意: showIntent 必须用不同的 requestCode，否则会覆盖真正带 extras 的 pi
+                val showIntent = Intent(context, AlarmReceiver::class.java).apply {
+                    action = "com.nudge.app.SHOW_ALARM"
+                }
                 val showPi = PendingIntent.getBroadcast(
                     context,
-                    item.id.toInt(),
+                    item.id.toInt() + 1000000,
                     showIntent,
                     PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
                 )

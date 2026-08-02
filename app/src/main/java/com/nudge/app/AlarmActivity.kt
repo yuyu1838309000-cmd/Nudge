@@ -197,10 +197,11 @@ class AlarmActivity : ComponentActivity() {
             val remain = item.triggerAt - System.currentTimeMillis()
             if (remain > 0 && item.enabled) {
                 timeTv.text = String.format("%02d:%02d", remain / 60000, (remain % 60000) / 1000)
+                subTv.text = "⏱️ ${item.message} · 剩余中"
             } else {
                 timeTv.text = "00:00"
+                subTv.text = "⏱️ ${item.message} · 已结束"
             }
-            subTv.text = "⏱️ ${item.message} · 已结束"
         } else {
             timeTv.text = String.format("%02d:%02d", item.hour, item.minute)
             val nextStr = sdf.format(Date(item.triggerAt))
