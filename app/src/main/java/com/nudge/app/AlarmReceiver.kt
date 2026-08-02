@@ -30,7 +30,9 @@ class AlarmReceiver : BroadcastReceiver() {
         }
 
         val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        val channelId = "nudge_alarm"
+        // 注意: 旧 channel "nudge_alarm" 已在旧版本用默认声音创建，Android 8+ channel 声音不可改，
+        // 所以必须换全新 channel ID，否则永远响的是通知声音
+        val channelId = "nudge_alarm_v2"
         val channel = NotificationChannel(channelId, "Nudge 闹钟", NotificationManager.IMPORTANCE_HIGH).apply {
             enableVibration(true)
             vibrationPattern = longArrayOf(0, 600, 400, 600, 400, 600)
