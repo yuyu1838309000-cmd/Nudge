@@ -87,8 +87,10 @@ class AlarmSoundService : Service() {
         }
         nm.createNotificationChannel(channel)
 
-        val contentIntent = Intent(this, AlarmActivity::class.java).apply {
+        val contentIntent = Intent(this, RingingActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            putExtra("title", title)
+            putExtra("note", note)
         }
         val contentPi = PendingIntent.getActivity(
             this, notifyId(), contentIntent,
@@ -103,7 +105,7 @@ class AlarmSoundService : Service() {
         )
 
         val text = if (note.isNotBlank()) note else "时间到啦"
-        return NotificationCompat.Builder(this, channelId)
+        val builder = NotificationCompat.Builder(this, channelId)
             .setContentTitle("⏰ $title")
             .setContentText(text)
             .setStyle(NotificationCompat.BigTextStyle().bigText(text))
@@ -113,7 +115,16 @@ class AlarmSoundService : Service() {
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setContentIntent(contentPi)
             .addAction(android.R.drawable.ic_menu_close_clear_cancel, "停止", stopPi)
-            .build()
+
+        if (Build.VERSION.SDK_INT >= 29) {
+            // 全屏弹窗: 锁屏/息屏时直接显示响铃页
+            val fullPi = PendingIntent.getActivity(
+                this, notifyId() + 2, contentIntent,
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+            )
+            builder.setFullScreenIntent(fullPi, true)
+        }
+        return builder.build()
     }
 
     private fun startRinging() {

@@ -81,5 +81,14 @@
             android:name=".AlarmActivity"
             android:exported="false"
             android:theme="@style/Theme.Nudge" />
+
+        <activity
+            android:name=".RingingActivity"
+            android:exported="false"
+            android:launchMode="singleTask"
+            android:excludeFromRecents="true"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true"
+            android:theme="@style/Theme.Nudge" />
     </application>
 </manifest>
