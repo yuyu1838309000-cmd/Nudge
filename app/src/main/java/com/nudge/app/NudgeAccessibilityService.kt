@@ -108,7 +108,15 @@ class NudgeAccessibilityService : AccessibilityService() {
                                 return
                             }
                             val stream = java.io.ByteArrayOutputStream()
-                            bmp.compress(android.graphics.Bitmap.CompressFormat.JPEG, 70, stream)
+                            val maxWidth = 1080
+                            val outBmp = if (bmp.width > maxWidth) {
+                                val nh = bmp.height * maxWidth / bmp.width
+                                android.graphics.Bitmap.createScaledBitmap(bmp, maxWidth, nh, true)
+                            } else {
+                                bmp
+                            }
+                            outBmp.compress(android.graphics.Bitmap.CompressFormat.JPEG, 55, stream)
+                            if (outBmp !== bmp) outBmp.recycle()
                             val bytes = stream.toByteArray()
                             if (bytes.isEmpty()) {
                                 callback("{\"error\":\"压缩后数据为空\"}")

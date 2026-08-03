@@ -537,9 +537,9 @@ class HttpServer(private val port: Int, private val context: Context) {
                 }
                 latch.countDown()
             }
-            val ok = latch.await(15, java.util.concurrent.TimeUnit.SECONDS)
-            if (!ok) Log.w("Nudge", "screenshotAndAnalyze: timeout after 15s")
-            return result.ifEmpty { "{\"error\":\"截图或AI分析超时(15s)\"}" }
+            val ok = latch.await(40, java.util.concurrent.TimeUnit.SECONDS)
+            if (!ok) Log.w("Nudge", "screenshotAndAnalyze: timeout after 40s")
+            return result.ifEmpty { "{\"error\":\"截图或AI分析超时(40s)\"}" }
         } catch (e: Exception) {
             Log.e("Nudge", "screenshotAndAnalyze error: ${e.message}", e)
             return "{\"error\":\"${e.message}\"}"
