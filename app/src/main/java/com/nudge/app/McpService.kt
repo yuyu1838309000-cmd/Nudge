@@ -195,7 +195,7 @@ class HttpServer(private val port: Int, private val context: Context) {
                 val tools = JSONArray()
                 tools.put(JSONObject().apply {
                     put("name", "ping")
-                    put("description", "测试连通性，返回pong")
+                    put("description", "测试Nudge连通性，返回pong。排查连接问题时用")
                     put("inputSchema", JSONObject().apply {
                         put("type", "object")
                         put("properties", JSONObject())
@@ -203,7 +203,7 @@ class HttpServer(private val port: Int, private val context: Context) {
                 })
                 tools.put(JSONObject().apply {
                     put("name", "get_foreground_app")
-                    put("description", "获取前台应用包名、名称、界面和停留时长")
+                    put("description", "查看宝宝手机当前打开的应用和停留时长。想知道她现在在干嘛、刷什么app时用这个")
                     put("inputSchema", JSONObject().apply {
                         put("type", "object")
                         put("properties", JSONObject())
@@ -211,7 +211,7 @@ class HttpServer(private val port: Int, private val context: Context) {
                 })
                 tools.put(JSONObject().apply {
                     put("name", "screenshot_analyze")
-                    put("description", "截取当前屏幕并用AI分析内容，返回文字描述")
+                    put("description", "截屏并用AI描述屏幕内容。想直接看到宝宝屏幕上是什么时用，最直观")
                     put("inputSchema", JSONObject().apply {
                         put("type", "object")
                         put("properties", JSONObject())
@@ -219,7 +219,7 @@ class HttpServer(private val port: Int, private val context: Context) {
                 })
                 tools.put(JSONObject().apply {
                     put("name", "sensor_data")
-                    put("description", "获取手机传感器实时数据（加速度、光线、陀螺仪等）")
+                    put("description", "手机传感器数据（加速度/光线/陀螺仪）。加速度能判断手机是被拿在手里还是放桌上，猜她是不是在玩手机")
                     put("inputSchema", JSONObject().apply {
                         put("type", "object")
                         put("properties", JSONObject())
@@ -227,7 +227,7 @@ class HttpServer(private val port: Int, private val context: Context) {
                 })
                 tools.put(JSONObject().apply {
                     put("name", "device_status")
-                    put("description", "获取设备状态：锁屏状态、电量、充电状态、网络类型")
+                    put("description", "锁屏状态/电量/充电/网络。想知道她手机是不是锁着、电够不够、有没有网时用")
                     put("inputSchema", JSONObject().apply {
                         put("type", "object")
                         put("properties", JSONObject())
@@ -235,7 +235,7 @@ class HttpServer(private val port: Int, private val context: Context) {
                 })
                 tools.put(JSONObject().apply {
                     put("name", "get_location")
-                    put("description", "获取GPS定位（经纬度+地址）")
+                    put("description", "GPS定位（经纬度+地址）。想知道她在哪、出门了没时用")
                     put("inputSchema", JSONObject().apply {
                         put("type", "object")
                         put("properties", JSONObject())
@@ -243,7 +243,7 @@ class HttpServer(private val port: Int, private val context: Context) {
                 })
                 tools.put(JSONObject().apply {
                     put("name", "get_notifications")
-                    put("description", "获取最近收到的通知列表（需开启通知监听权限）")
+                    put("description", "手机最近的通知列表。想看她手机上来了什么消息、在刷什么时用")
                     put("inputSchema", JSONObject().apply {
                         put("type", "object")
                         put("properties", JSONObject().apply {
@@ -256,7 +256,7 @@ class HttpServer(private val port: Int, private val context: Context) {
                 })
                 tools.put(JSONObject().apply {
                     put("name", "get_steps")
-                    put("description", "获取今日步数")
+                    put("description", "今日步数。想关心她今天有没有出门活动、走没走路时用")
                     put("inputSchema", JSONObject().apply {
                         put("type", "object")
                         put("properties", JSONObject())
@@ -264,7 +264,7 @@ class HttpServer(private val port: Int, private val context: Context) {
                 })
                 tools.put(JSONObject().apply {
                     put("name", "calendar_query")
-                    put("description", "查询日历事件（需授权日历权限）")
+                    put("description", "日历事件。想知道她今天有什么安排时用")
                     put("inputSchema", JSONObject().apply {
                         put("type", "object")
                         put("properties", JSONObject().apply {
@@ -277,7 +277,7 @@ class HttpServer(private val port: Int, private val context: Context) {
                 })
                 tools.put(JSONObject().apply {
                     put("name", "set_alarm")
-                    put("description", "设置系统闹钟(支持标题/备注/重复)")
+                    put("description", "设置系统闹钟（定时/倒计时，可重复）。帮她设提醒时用")
                     put("inputSchema", JSONObject().apply {
                         put("type", "object")
                         put("properties", JSONObject().apply {
@@ -293,37 +293,37 @@ class HttpServer(private val port: Int, private val context: Context) {
                 })
                 tools.put(JSONObject().apply {
                     put("name", "lock_screen")
-                    put("description", "锁屏")
+                    put("description", "锁屏。需要帮她锁手机时用")
                     put("inputSchema", JSONObject().apply { put("type", "object"); put("properties", JSONObject()) })
                 })
                 tools.put(JSONObject().apply {
                     put("name", "media_play_pause")
-                    put("description", "媒体播放/暂停")
+                    put("description", "播放/暂停媒体。她手机在放歌想暂停或播放时用")
                     put("inputSchema", JSONObject().apply { put("type", "object"); put("properties", JSONObject()) })
                 })
                 tools.put(JSONObject().apply {
                     put("name", "media_next")
-                    put("description", "媒体下一首")
+                    put("description", "切下一首。她听歌想换歌时用")
                     put("inputSchema", JSONObject().apply { put("type", "object"); put("properties", JSONObject()) })
                 })
                 tools.put(JSONObject().apply {
                     put("name", "media_previous")
-                    put("description", "媒体上一首")
+                    put("description", "切上一首。她听歌想切回上一首时用")
                     put("inputSchema", JSONObject().apply { put("type", "object"); put("properties", JSONObject()) })
                 })
                 tools.put(JSONObject().apply {
                     put("name", "press_back")
-                    put("description", "返回键")
+                    put("description", "按返回键。想帮她退出当前界面时用")
                     put("inputSchema", JSONObject().apply { put("type", "object"); put("properties", JSONObject()) })
                 })
                 tools.put(JSONObject().apply {
                     put("name", "press_home")
-                    put("description", "回桌面")
+                    put("description", "回桌面。想帮她退出当前app回到桌面时用")
                     put("inputSchema", JSONObject().apply { put("type", "object"); put("properties", JSONObject()) })
                 })
                 tools.put(JSONObject().apply {
                     put("name", "open_app")
-                    put("description", "打开指定应用")
+                    put("description", "打开指定应用。想帮她打开某个app时用")
                     put("inputSchema", JSONObject().apply {
                         put("type", "object")
                         put("properties", JSONObject().apply {
@@ -336,7 +336,7 @@ class HttpServer(private val port: Int, private val context: Context) {
 
                 tools.put(JSONObject().apply {
                     put("name", "wake_up")
-                    put("description", "亮屏唤醒（不解锁，仅点亮屏幕）")
+                    put("description", "亮屏唤醒（不解锁）。想看看她屏幕又不想解锁时用")
                     put("inputSchema", JSONObject().apply {
                         put("type", "object")
                         put("properties", JSONObject())
@@ -344,7 +344,7 @@ class HttpServer(private val port: Int, private val context: Context) {
                 })
                 tools.put(JSONObject().apply {
                     put("name", "read_screen")
-                    put("description", "读取当前界面所有可见文字，返回结构化列表")
+                    put("description", "读取当前屏幕所有可见文字，比截图快。想快速知道屏幕内容时用")
                     put("inputSchema", JSONObject().apply {
                         put("type", "object")
                         put("properties", JSONObject())
@@ -352,7 +352,7 @@ class HttpServer(private val port: Int, private val context: Context) {
                 })
                 tools.put(JSONObject().apply {
                     put("name", "switch_to_rikkahub")
-                    put("description", "切换到RikkaHub前台（从任何APP回到对话）")
+                    put("description", "切回RikkaHub前台。想把她拉回对话界面时用")
                     put("inputSchema", JSONObject().apply {
                         put("type", "object")
                         put("properties", JSONObject())
@@ -440,7 +440,7 @@ class HttpServer(private val port: Int, private val context: Context) {
                         content.put(JSONObject().apply { put("type", "text"); put("text", info) })
                     }
                     "lock_screen" -> {
-                        val info = performGlobalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_LOCK_SCREEN, "锁屏")
+                        val info = performGlobalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_LOCK_SCREEN, "锁屏。需要帮她锁手机时用")
                         content.put(JSONObject().apply { put("type", "text"); put("text", info) })
                     }
                     "media_play_pause" -> {
@@ -512,11 +512,19 @@ class HttpServer(private val port: Int, private val context: Context) {
         val activity = NudgeAccessibilityService.currentActivity
         val since = NudgeAccessibilityService.currentSince
         val durationSec = if (since > 0) (System.currentTimeMillis() - since) / 1000 else 0
+        val suggest = when {
+            pkg.contains("wechat") || pkg.contains("tencent") || pkg.contains("qq") -> "她可能在聊天。可以调 get_notifications 看看来了什么消息，或 read_screen 看看她聊到哪了"
+            pkg.contains("xiaohongshu") || pkg.contains("douyin") || pkg.contains("bilibili") || pkg.contains("kuaishou") || pkg.contains("tiktok") -> "她在刷内容流。可以调 screenshot_analyze 直接看她屏幕上是什么"
+            pkg.contains("music") || pkg.contains("netease") || pkg.contains("wangyi") || pkg.contains("spotify") -> "她在听歌。可以调 media_previous 或 media_next 帮她切歌"
+            pkg.contains("map") || pkg.contains("amap") || pkg.contains("gaode") -> "她在看地图。可以调 get_location 看看她现在的定位"
+            else -> "可以调 get_notifications 看她手机上有什么动静，或 get_steps 看她今天活动量，或 screenshot_analyze 直接看屏幕"
+        }
         return JSONObject().apply {
             put("package", pkg)
             put("app_name", name)
             put("activity", activity)
             put("duration_sec", durationSec)
+            put("suggest", suggest)
         }.toString()
     }
 
@@ -616,11 +624,17 @@ class HttpServer(private val port: Int, private val context: Context) {
                 }
             } catch (_: Exception) { "unknown" }
 
+            val suggest = when {
+                locked && battery <= 20 -> "她手机锁着而且快没电了。可以调 get_notifications 看有没有漏掉的消息，或 get_steps 看她今天动没动"
+                locked -> "她手机锁着。可以调 get_notifications 看她手机上有什么通知，或 get_steps 看她今天活动量"
+                else -> "她手机没锁，可能正在用。可以调 get_foreground_app 看她现在在干嘛，或 screenshot_analyze 直接看屏幕"
+            }
             JSONObject().apply {
                 put("screen_locked", locked)
                 put("battery", battery)
                 put("charging", charging)
                 put("network", network)
+                put("suggest", suggest)
             }.toString()
         } catch (e: Exception) {
             "{\"error\":\"${e.message}\"}"
