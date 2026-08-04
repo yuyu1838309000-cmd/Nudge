@@ -485,8 +485,9 @@ class HttpServer(private val port: Int, private val context: Context) {
                     }
                     "switch_to_rikkahub" -> {
                         val svc = NudgeAccessibilityService.instance
-                        val info = if (svc != null && svc.switchToRikkaHub())
-                            "{\"success\":true,\"action\":\"切换到RikkaHub\"}"
+                        val idx = args.optInt("index", 1)
+                        val info = if (svc != null && svc.switchToRikkaHub(idx))
+                            "{\"success\":true,\"action\":\"切换到RikkaHub\",\"index\":$idx}"
                         else "{\"error\":\"切换失败，请手动切回RikkaHub\"}"
                         content.put(JSONObject().apply { put("type", "text"); put("text", info) })
                     }

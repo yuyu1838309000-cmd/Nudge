@@ -254,17 +254,68 @@ class NudgeAccessibilityService : AccessibilityService() {
 
 
 
-    fun switchToRikkaHub(): Boolean {
+    fun switchToRikkaHub(index: Int = 1): Boolean {
         // 1. Try direct intent with REORDER_TO_FRONT
+        var launched = false
         try {
             val intent = packageManager.getLaunchIntentForPackage("me.rerere.rikkahub")
             if (intent != null) {
                 intent.addFlags(android.content.Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
                 startActivity(intent)
-                return true
+                launched = true
             }
         } catch (_: Exception) {}
-        // 2. Fallback to recents
+        // 2. If launched, wait and auto-click chooser option (双开分身选择框)
+        if (launched) {
+            Thread.sleep(1000)
+            try {
+                val root = rootInActiveWindow ?: return true
+                try {
+                    val rootPkg = root.packageName?.toString() ?: ""
+                    if (rootPkg != "me.rerere.rikkahub") {
+                        // 还在选择框/其他界面，找 RikkaHub 选项点击
+                        val candidates = mutableListOf<android.util.Pair<android.view.accessibility.AccessibilityNodeInfo, Int>>()
+                        try {
+                            val nodes = root.findAccessibilityNodeInfosByText("RikkaHub")
+                            val seen = HashSet<String>()
+                            for (node in nodes) {
+                                try {
+                                    var n: android.view.accessibility.AccessibilityNodeInfo? = node
+                                    var depth = 0
+                                    while (n != null && depth < 6) {
+                                        if (n.isClickable) {
+                                            val bounds = android.graphics.Rect()
+                                            n.getBoundsInScreen(bounds)
+                                            val key = "${n.className}|${bounds.top}|${bounds.left}"
+                                            if (seen.add(key)) {
+                                                candidates.add(android.util.Pair(n, bounds.top))
+                                            }
+                                            break
+                                        }
+                                        val parent = n.parent
+                                        n = if (parent != null && parent !== n) parent else null
+                                        depth++
+                                    }
+                                } catch (_: Exception) {}
+                            }
+                            candidates.sortBy { it.second }
+                            val clickables = candidates.map { it.first }
+                            if (clickables.isNotEmpty()) {
+                                val target = clickables.getOrNull(index) ?: clickables[0]
+                                target.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK)
+                                return true
+                            }
+                        } catch (_: Exception) {}
+                    }
+                } finally {
+                    try { root.recycle() } catch (_: Exception) {}
+                }
+                return true
+            } catch (_: Exception) {
+                return true
+            }
+        }
+        // 3. Fallback to recents
         performGlobalAction(GLOBAL_ACTION_RECENTS)
         Thread.sleep(800)
         val root = rootInActiveWindow ?: return false
