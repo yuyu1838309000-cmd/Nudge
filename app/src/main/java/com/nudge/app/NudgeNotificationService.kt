@@ -16,7 +16,10 @@ class NudgeNotificationService : NotificationListenerService() {
             val inst = instance ?: return emptyList()
             return try {
                 inst.activeNotifications
-                    .filter { !isBlocked(it.packageName, it.notification.extras.getString("android.title")) }
+                    .filter {
+                        val ex = it.notification.extras
+                        !isBlocked(it.packageName, ex.getString("android.title"), ex.getString("android.text"))
+                    }
                     .map { sbn ->
                         val extras = sbn.notification.extras
                         JSONObject().apply {
@@ -64,6 +67,13 @@ class NudgeNotificationService : NotificationListenerService() {
         fun isBlocked(pkg: String): Boolean = pkg in BLOCKED_PACKAGES
         fun isBlocked(pkg: String, title: String?): Boolean =
             pkg in BLOCKED_PACKAGES || BLOCKED_TITLE_RULES.any { it.first == pkg && it.second == title }
+        fun isBlocked(pkg: String, title: String?, text: String?): Boolean {
+            if (pkg in BLOCKED_PACKAGES) return true
+            if (BLOCKED_TITLE_RULES.any { it.first == pkg && it.second == title }) return true
+            // RikkaHub 全空内容的常驻通知没意义，滤掉（有内容的正常消息保留）
+            if (pkg == "me.rerere.rikkahub" && title.isNullOrBlank() && text.isNullOrBlank()) return true
+            return false
+        }
     }
 
     override fun onCreate() {
