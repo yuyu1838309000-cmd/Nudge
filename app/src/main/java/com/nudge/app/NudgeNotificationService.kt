@@ -84,7 +84,6 @@ class NudgeNotificationService : NotificationListenerService() {
         val title = sbn.notification.extras.getString("android.title") ?: ""
         if (isBlocked(pkg, title)) return
         val extras = sbn.notification.extras
-        val title = extras.getString("android.title") ?: ""
         val text = extras.getString("android.text") ?: ""
         val appName = try {
             packageManager.getApplicationLabel(packageManager.getApplicationInfo(pkg, 0)).toString()
