@@ -46,7 +46,11 @@ class NudgeNotificationService : NotificationListenerService() {
             "com.miui.contentextension",  // 传送门
             "com.miui.translationservice", // 传送门-翻译
             "com.xiaomi.finddevice",       // 查找设备
-            "com.xiaomi.smarthome"         // 米家
+            "com.xiaomi.smarthome",        // 米家
+            "com.miui.tsmclient",          // 小米智能卡/钱包
+            "com.xiaomi.mi_connect_service", // 小米互联通信服务
+            "com.miui.voicetrigger",       // 语音唤醒
+            "com.xiaomi.mirror"            // 跨屏协同服务
         )
 
         fun isBlocked(pkg: String): Boolean = pkg in BLOCKED_PACKAGES
