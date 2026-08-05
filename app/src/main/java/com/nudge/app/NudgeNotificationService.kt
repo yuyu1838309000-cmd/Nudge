@@ -16,7 +16,7 @@ class NudgeNotificationService : NotificationListenerService() {
             val inst = instance ?: return emptyList()
             return try {
                 inst.activeNotifications
-                    .filter { !isBlocked(it.packageName) }
+                    .filter { !isBlocked(it.packageName, it.notification.extras.getString("android.title")) }
                     .map { sbn ->
                         val extras = sbn.notification.extras
                         JSONObject().apply {
@@ -56,7 +56,14 @@ class NudgeNotificationService : NotificationListenerService() {
             "com.nudge.app"                // Nudge 自己
         )
 
+        // 按 (包名, 标题) 过滤特定常驻通知，不影响该应用的其他消息
+        private val BLOCKED_TITLE_RULES = setOf(
+            "me.rerere.rikkahub" to "Web服务器运行中"
+        )
+
         fun isBlocked(pkg: String): Boolean = pkg in BLOCKED_PACKAGES
+        fun isBlocked(pkg: String, title: String?): Boolean =
+            pkg in BLOCKED_PACKAGES || BLOCKED_TITLE_RULES.any { it.first == pkg && it.second == title }
     }
 
     override fun onCreate() {
@@ -74,7 +81,8 @@ class NudgeNotificationService : NotificationListenerService() {
     override fun onNotificationPosted(sbn: StatusBarNotification?) {
         if (sbn == null) return
         val pkg = sbn.packageName
-        if (isBlocked(pkg)) return
+        val title = sbn.notification.extras.getString("android.title") ?: ""
+        if (isBlocked(pkg, title)) return
         val extras = sbn.notification.extras
         val title = extras.getString("android.title") ?: ""
         val text = extras.getString("android.text") ?: ""
