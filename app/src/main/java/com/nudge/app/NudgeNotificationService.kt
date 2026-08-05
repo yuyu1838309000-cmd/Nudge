@@ -50,7 +50,10 @@ class NudgeNotificationService : NotificationListenerService() {
             "com.miui.tsmclient",          // 小米智能卡/钱包
             "com.xiaomi.mi_connect_service", // 小米互联通信服务
             "com.miui.voicetrigger",       // 语音唤醒
-            "com.xiaomi.mirror"            // 跨屏协同服务
+            "com.xiaomi.mirror",           // 跨屏协同服务
+            "com.github.metacubex.clash.alpha", // Clash 常驻
+            "com.termux",                  // Termux 常驻
+            "com.nudge.app"                // Nudge 自己
         )
 
         fun isBlocked(pkg: String): Boolean = pkg in BLOCKED_PACKAGES
