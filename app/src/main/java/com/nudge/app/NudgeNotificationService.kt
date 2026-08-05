@@ -9,6 +9,32 @@ class NudgeNotificationService : NotificationListenerService() {
     companion object {
         var notifMap: java.util.concurrent.ConcurrentHashMap<String, String> = java.util.concurrent.ConcurrentHashMap()
         var isRunning: Boolean = false
+        var instance: NudgeNotificationService? = null
+
+        // 从系统实时读取当前活跃通知（过滤黑名单），不依赖内存缓存
+        fun getActiveNotificationsJson(count: Int): List<JSONObject> {
+            val inst = instance ?: return emptyList()
+            return try {
+                inst.activeNotifications
+                    .filter { !isBlocked(it.packageName) }
+                    .map { sbn ->
+                        val extras = sbn.notification.extras
+                        JSONObject().apply {
+                            put("app", try {
+                                inst.packageManager.getApplicationLabel(inst.packageManager.getApplicationInfo(sbn.packageName, 0)).toString()
+                            } catch (_: Exception) { sbn.packageName })
+                            put("package", sbn.packageName)
+                            put("title", extras.getString("android.title") ?: "")
+                            put("text", extras.getString("android.text") ?: "")
+                            put("time", sbn.postTime)
+                        }
+                    }
+                    .sortedByDescending { it.optLong("time", 0L) }
+                    .take(count)
+            } catch (e: Exception) {
+                emptyList()
+            }
+        }
 
         // 小米系统服务/常驻垃圾通知，不存进 map（右页那些）
         private val BLOCKED_PACKAGES = setOf(
@@ -29,11 +55,13 @@ class NudgeNotificationService : NotificationListenerService() {
     override fun onCreate() {
         super.onCreate()
         isRunning = true
+        instance = this
     }
 
     override fun onDestroy() {
         super.onDestroy()
         isRunning = false
+        instance = null
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification?) {
