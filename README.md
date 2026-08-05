@@ -8,7 +8,7 @@
 RikkaHub ←127.0.0.1:8809→ Nudge APP → 数据采集 + 命令执行 + 闹钟
 
 ## 版本
-当前 **v0.3.14**（versionCode 15），APK 发布在 GitHub Releases：
+当前 **v0.3.15**（versionCode 15），APK 发布在 GitHub Releases：
 https://github.com/yuyu1838309000-cmd/Nudge/releases
 
 ## UI 结构
