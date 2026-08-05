@@ -9,19 +9,6 @@ class NudgeNotificationService : NotificationListenerService() {
     companion object {
         var notifMap: java.util.concurrent.ConcurrentHashMap<String, String> = java.util.concurrent.ConcurrentHashMap()
         var isRunning: Boolean = false
-
-        // 小米系统服务/常驻垃圾通知，不存进 map（右页那些）
-        private val BLOCKED_PACKAGES = setOf(
-            "com.android.systemui",       // 系统界面
-            "com.miui.securitycenter",    // 安全服务
-            "com.milink.service",         // 设备互联
-            "com.xiaomi.aicr",            // 小米澎湃AI引擎
-            "com.miui.misound",           // 音质音效
-            "com.miui.contentextension",  // 传送门
-            "com.miui.translationservice" // 传送门-翻译
-        )
-
-        fun isBlocked(pkg: String): Boolean = pkg in BLOCKED_PACKAGES
     }
 
     override fun onCreate() {
@@ -37,7 +24,6 @@ class NudgeNotificationService : NotificationListenerService() {
     override fun onNotificationPosted(sbn: StatusBarNotification?) {
         if (sbn == null) return
         val pkg = sbn.packageName
-        if (isBlocked(pkg)) return
         val extras = sbn.notification.extras
         val title = extras.getString("android.title") ?: ""
         val text = extras.getString("android.text") ?: ""
